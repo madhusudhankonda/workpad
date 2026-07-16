@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Workpad Privacy Policy</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --ink: #20212a;
+        --muted: #5d5f6c;
+        --line: #e4e4ec;
+        --accent: #5e69df;
+        --bg: #fafafd;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --ink: #eeeff5;
+          --muted: #a0a2b0;
+          --line: #34343e;
+          --bg: #18181d;
+        }
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: var(--bg);
+        color: var(--ink);
+        line-height: 1.6;
+      }
+      main {
+        max-width: 720px;
+        margin: 0 auto;
+        padding: 48px 24px 80px;
+      }
+      h1 {
+        margin: 0 0 8px;
+        font-size: 2rem;
+        letter-spacing: -0.04em;
+      }
+      .meta {
+        color: var(--muted);
+        font-size: 0.95rem;
+        margin-bottom: 32px;
+      }
+      p {
+        margin: 0 0 18px;
+        color: var(--ink);
+      }
+      a {
+        color: var(--accent);
+      }
+      footer {
+        margin-top: 40px;
+        padding-top: 20px;
+        border-top: 1px solid var(--line);
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Workpad Privacy Policy</h1>
+      <p class="meta">Last updated: 15 July 2026</p>
+      <p>
+        Workpad is local-first. In this MVP, note content, tags, settings, and backups are stored only
+        in your browser’s IndexedDB on your device.
+      </p>
+      <p>
+        Workpad does not send note content, page content, URLs, analytics, or identifiers to any remote
+        service. It does not use tracking or collect browser history.
+      </p>
+      <p>
+        When you open the side panel or explicitly save a selection/page from the context menu, Workpad
+        reads the active tab’s title, URL, and domain to provide the requested context. It does not fetch
+        page assets, including favicons. Chrome internal and restricted pages are not read.
+      </p>
+      <p>
+        Deleting extension data from Chrome or using Workpad’s reset option permanently removes local
+        Workpad data. Export a JSON backup before resetting data if you want to retain it.
+      </p>
+      <footer>
+        Source:
+        <a href="https://github.com/madhusudhankonda/workpad">github.com/madhusudhankonda/workpad</a>
+      </footer>
+    </main>
+  </body>
+</html>
