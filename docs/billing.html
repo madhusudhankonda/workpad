@@ -23,11 +23,17 @@
       <p class="hint">You can close this tab and return to the Workpad side panel.</p>
     </main>
     <script>
-      if (new URLSearchParams(location.search).get("billing") !== "success") {
+      const billingOutcome = new URLSearchParams(location.search).get("billing");
+      if (billingOutcome === "cancelled") {
         document.title = "Workpad checkout cancelled";
         document.getElementById("mark").textContent = "×";
         document.getElementById("title").textContent = "Checkout cancelled";
         document.getElementById("message").textContent = "Nothing was charged. You can return to Workpad whenever you are ready.";
+      } else if (billingOutcome !== "success") {
+        document.title = "Workpad billing updated";
+        document.getElementById("mark").textContent = "←";
+        document.getElementById("title").textContent = "Return to Workpad";
+        document.getElementById("message").textContent = "Your billing changes have been saved. Return to Workpad and reopen Settings to refresh your plan.";
       }
     </script>
   </body>
