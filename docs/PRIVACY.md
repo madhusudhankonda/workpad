@@ -1,9 +1,25 @@
 # Workpad Privacy Policy
 
-Workpad is local-first. In this MVP, note content, tags, settings, and backups are stored only in your browser's IndexedDB on your device.
+Workpad is local-first. Note content, tags, settings, and backups are stored in your browser's IndexedDB on your device. An OpenAI API key, if you add one, is kept in Chrome session storage by default. You may explicitly choose to remember it in Chrome local storage. API keys are excluded from Workpad backups.
 
-Workpad does not send note content, page content, URLs, analytics, or identifiers to any remote service. It does not use tracking or collect browser history.
+Workpad does not use analytics or tracking, and it does not collect browser history. An account and cloud note sync are optional; Workpad remains usable without either.
 
-When you open the side panel or explicitly save a selection/page from the context menu, Workpad reads the active tab's title, URL, and domain to provide the requested context. It does not fetch page assets, including favicons. Chrome internal and restricted pages are not read.
+ChocolateMinds operates Workpad and is the data controller for optional Workpad account and subscription data. Privacy requests can be sent to ai@chocolateminds.com.
 
-Deleting extension data from Chrome or using Workpad's reset option permanently removes local Workpad data. Export a JSON backup before resetting data if you want to retain it.
+When you open the side panel or explicitly save a selection/page from the context menu, Workpad reads the active tab's title, URL, and domain to provide the requested context. On supported Gmail and Outlook pages, Workpad recognises the website from its URL but does not read message content until you click **Save email** or deliberately use an AI page action. Saving an email reads the currently opened message's visible subject, sender, recipients, date and body and stores them as a Workpad note. Workpad does not scan the inbox or read other messages. When you open Workpad AI, it reads visible text from the active page so you can preview the AI source. Chrome internal and restricted pages are not read.
+
+Chrome may require additional page access after a tab navigates or when Workpad was not opened from its toolbar icon. In that case, Workpad asks you to grant optional access only to the current website. You can deny the request; AI page reading will remain unavailable for that site.
+
+AI features are optional. Nothing is sent to OpenAI merely by opening Workpad AI. When you choose an AI action, Workpad sends the source you chose (selected text or page text), the page title, a URL with its query string and fragment removed, your chosen instruction, and a random privacy-preserving safety identifier directly to OpenAI's Responses API using your API key. AI results are stored in Workpad only when you choose **Save as note**. Workpad requests `store: false`; OpenAI's own data controls and retention terms still apply to API processing.
+
+Production builds may offer optional Workpad accounts. If you sign in, Supabase processes your email address, user identifier, authentication session, plan and entitlement information. Authentication access tokens are held in Chrome session storage; the refresh token is held in Chrome local storage so you can remain signed in. Signing in alone does not upload notes.
+
+Cloud note sync is separately opt-in. If you enable it, saved note titles, content, tags, favourites, archive state, source-page details and timestamps are stored in your private Supabase account and merged across signed-in Workpad installations. Row Level Security restricts each account to its own rows. Workpad keeps an offline queue on the device and uses latest-edit-wins conflict resolution while retaining a conflict copy when both sides changed. Deleting a synced note uploads a tombstone containing its identifier and deletion time with the note content removed. Cloud notes are not end-to-end encrypted.
+
+If you set a reminder, Workpad stores its time and note identifier in Chrome extension storage and uses Chrome's alarms and notifications features to alert you on that device. Reminder notifications may open the saved source page when clicked. Reminders are device-local and require Chrome to run at or after the scheduled time.
+
+If you purchase a subscription, Stripe processes payment and billing information. Workpad stores only Stripe customer, subscription, price and status identifiers; the extension and Workpad database do not receive or store card numbers. Stripe sends signed subscription events to Workpad's server to grant or revoke product entitlements.
+
+Workpad's use and transfer of information received from Google APIs will adhere to the Chrome Web Store User Data Policy, including the Limited Use requirements. Workpad does not sell user data, use it for advertising, or allow humans to read page or note content except when a user explicitly provides content for support or when required for security or law.
+
+Deleting extension data from Chrome or using Workpad's reset option permanently removes local Workpad data and the saved API key, but does not delete an opted-in cloud copy. Turning off sync stops future transfers without deleting either copy. Choosing **Delete account** in Settings cancels an active Workpad subscription and permanently deletes the Supabase account, cloud notes, and associated Workpad billing records; local notes remain until separately reset. Export a JSON backup first if you want to retain your notes.

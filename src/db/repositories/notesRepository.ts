@@ -1,5 +1,6 @@
 import { db } from "../database";
 import type { NewNote, Note } from "../../types";
+import { markLocalNoteChange } from "../../services/noteSync";
 
 export interface NotesRepository {
   create(note: NewNote): Promise<Note>;
@@ -27,6 +28,7 @@ export const notesRepository: NotesRepository = {
       isArchived: input.isArchived ?? false
     };
     await db.notes.add(note);
+    await markLocalNoteChange(note.id, false, note.updatedAt);
     return note;
   },
   async update(id, changes) {
@@ -34,10 +36,12 @@ export const notesRepository: NotesRepository = {
     if (!existing) throw new Error("Note no longer exists.");
     const note = { ...existing, ...changes, id, updatedAt: new Date().toISOString() };
     await db.notes.put(note);
+    await markLocalNoteChange(note.id, false, note.updatedAt);
     return note;
   },
   async delete(id) {
     await db.notes.delete(id);
+    await markLocalNoteChange(id, true, new Date().toISOString());
   },
   getById: (id) => db.notes.get(id),
   async getAll() {

@@ -13,16 +13,21 @@
   "background": { "service_worker": "background.js", "type": "module" },
   "side_panel": { "default_path": "sidepanel.html" },
   "content_security_policy": {
-    "extension_pages": "script-src 'self'; object-src 'none'; base-uri 'none'"
+    "extension_pages": "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src https://api.openai.com https://*.supabase.co; object-src 'none'; base-uri 'none'"
   },
-  "permissions": ["sidePanel", "storage", "tabs", "activeTab", "contextMenus"],
+  "oauth2": {
+    "client_id": "108759011164-r43rdi0tdfpokaagg18fmogics6e449n.apps.googleusercontent.com",
+    "scopes": ["openid", "email", "profile"]
+  },
+  "permissions": ["sidePanel", "storage", "tabs", "activeTab", "contextMenus", "scripting", "identity", "alarms", "notifications"],
+  "host_permissions": ["https://api.openai.com/*"],
+  "optional_host_permissions": ["http://*/*", "https://*/*"],
   "commands": {
     "open-workpad": {
       "suggested_key": { "default": "Alt+Shift+W", "mac": "Alt+Shift+W" },
       "description": "Open Workpad"
     },
     "new-note": { "description": "Create a standalone note" },
-    "focus-search": { "description": "Focus Workpad search" },
-    "open-scratchpad": { "description": "Open Workpad scratchpad" }
+    "focus-search": { "description": "Focus Workpad search" }
   }
 }

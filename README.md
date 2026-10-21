@@ -1,14 +1,18 @@
 # Workpad
 
-Workpad is a local-first contextual notebook that lives in Chrome's side panel. It keeps scratch work, page research, and domain-level notes beside the website where they matter.
+Workpad is a local-first contextual notebook that lives in Chrome's side panel. It keeps page research and general notes beside the website where they matter.
 
 ## Features
 
-- Global scratchpad, standalone, exact-page, and domain notes
+- Focused This Page and All Notes views for page-linked and general notes
 - IndexedDB persistence via Dexie; no backend or account required
+- Optional, explicit Supabase note sync with offline queuing and conflict copies
 - Debounced auto-save, tags, favourites, local search, and keyboard shortcuts
 - Current-page context and graceful handling of restricted Chrome pages
 - Right-click selection capture and page-link capture
+- On-demand AI summaries, translations, action points, explanations, and custom prompts
+- Full-page or selected-text AI input with a review-before-save workflow
+- Traceable AI answers with clickable evidence citations that highlight the supporting passage on the page
 - Markdown/plain-text single note export and JSON backup/import
 - Light, dark, and system themes; first-launch onboarding
 
@@ -44,14 +48,19 @@ For context-menu capture, select text on a normal webpage, right-click, then cho
 
 - `src/background`: Manifest V3 service worker, side-panel and context-menu wiring.
 - `src/sidepanel`: React application and side-panel entry point.
-- `src/db`: Dexie schema and repository abstraction, intentionally isolated for future Supabase sync.
+- `src/db`: Dexie schema and repository abstraction for local-first notes.
+- `supabase`: RLS-protected account, optional cloud notes, entitlement, usage, and Stripe subscription backend.
 - `src/services`: Chrome API boundary.
 - `src/utils`: URL normalization, backup validation, and domain matching logic.
 - `tests`: Vitest unit tests.
 
 ## Privacy and permissions
 
-All notes remain in IndexedDB on the local device. Workpad has no analytics, tracking, server, or external API calls. `activeTab` and `tabs` are used only to display the current page context and associate a note when requested. `sidePanel` opens the notebook, `contextMenus` enables explicit capture, and `storage` transfers pending context-menu captures between Chrome contexts. No host permissions or browsing-history permission are requested.
+Notes remain in IndexedDB on the local device by default. Signed-in users may explicitly enable Supabase cloud sync; signing in alone never uploads notes. Synced notes are protected by per-user database policies but are not end-to-end encrypted. Workpad has no analytics or tracking. AI is optional and uses the user's own OpenAI API key. Keys use Chrome session storage by default; persistent storage is an explicit option, and keys are always excluded from backups. When the user chooses an AI action, only the chosen page/selection text, page title, sanitized URL, action instruction, and a random safety identifier are sent directly to OpenAI. `store: false` is set on Responses API calls.
+
+Production builds can enable optional Supabase accounts and a **£1.99/month Workpad Pro** subscription with `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY`. Pro unlocks opt-in Workpad Cloud note sync. Stripe and Supabase secrets remain server-side in Edge Function secrets. See [docs/PRODUCTION.md](docs/PRODUCTION.md).
+
+`activeTab`, `tabs`, and `scripting` provide page context and on-demand text extraction. On Gmail and Outlook, message text is captured only when the user clicks **Save email**. If Chrome's temporary page access is unavailable, Workpad can request optional access to the current website. It does not request permanent access to every website. `sidePanel` opens the notebook, `contextMenus` enables explicit capture, `storage` holds extension state, and `alarms` plus `notifications` power user-created reminders. The only required remote host permission is `https://api.openai.com/*`; browsing-history permission is not requested.
 
 See [docs/PRIVACY.md](docs/PRIVACY.md).
 
@@ -63,6 +72,6 @@ See [docs/PRIVACY.md](docs/PRIVACY.md).
 
 ## Future roadmap
 
-1. Supabase authentication and encrypted multi-device synchronization.
+1. Optional end-to-end encryption for cloud-synced notes.
 2. Shared team workspaces and reusable templates.
-3. AI summaries, semantic search, task extraction, browser-history context, and Notion, Google Docs, and Jira integrations.
+3. Semantic search, browser-history context, and Notion, Google Docs, and Jira integrations.

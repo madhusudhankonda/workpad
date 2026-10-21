@@ -32,6 +32,20 @@ export interface Settings {
   autoSaveDebounce: number;
   removeTrackingParameters: boolean;
   onboardingCompleted: boolean;
+  aiModel: "gpt-5.6-luna" | "gpt-5.6-terra" | "gpt-5.6-sol";
+  aiMaxSourceCharacters: number;
+  cloudSyncEnabled: boolean;
+  cloudSyncUserId?: string;
+  lastCloudSyncAt?: string;
+}
+
+export interface NoteSyncRecord {
+  noteId: string;
+  userId: string;
+  dirty: boolean;
+  deleted: boolean;
+  changedAt: string;
+  lastSyncedAt?: string;
 }
 
 export interface PageContext {
@@ -48,4 +62,19 @@ export interface WorkpadBackup {
   exportedAt: string;
   notes: Note[];
   settings?: Settings;
+}
+
+export type AIAction = "summary" | "translate" | "actions" | "explain" | "custom";
+
+export interface ExtractedPageContent {
+  title: string;
+  url: string;
+  selection: string;
+  text: string;
+  truncated: boolean;
+}
+
+export interface EvidencePassage {
+  id: string;
+  text: string;
 }

@@ -38,6 +38,17 @@ export function normalizeUrl(url: string, removeTracking = true): string {
   }
 }
 
+export function normalizeContextUrl(url: string, removeTracking = true): string {
+  const normalized = normalizeUrl(url, removeTracking);
+  try {
+    const parsed = new URL(url);
+    if (parsed.hostname === "mail.google.com" && parsed.hash) return `${normalized}${parsed.hash}`;
+  } catch {
+    return normalized;
+  }
+  return normalized;
+}
+
 export function noteMatchesPage(note: { type: string; normalizedPageUrl?: string }, url: string): boolean {
   return note.type === "page" && note.normalizedPageUrl === url;
 }

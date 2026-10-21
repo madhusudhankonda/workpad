@@ -7,5 +7,6 @@ import tseslint from "typescript-eslint";
 export default tseslint.config(
   { ignores: ["dist", "node_modules"] },
   { extends: [js.configs.recommended, ...tseslint.configs.recommended], files: ["**/*.{ts,tsx}"], languageOptions: { globals: globals.browser } },
-  { files: ["**/*.{ts,tsx}"], plugins: { "react-hooks": reactHooks, "react-refresh": reactRefresh }, rules: { ...reactHooks.configs.recommended.rules, "react-hooks/exhaustive-deps": "off", "react-hooks/immutability": "off", "react-refresh/only-export-components": ["warn", { allowConstantExport: true }] } }
+  { files: ["**/*.{ts,tsx}"], plugins: { "react-hooks": reactHooks, "react-refresh": reactRefresh }, rules: { ...reactHooks.configs.recommended.rules, "react-hooks/exhaustive-deps": "off", "react-hooks/immutability": "off", "react-refresh/only-export-components": ["warn", { allowConstantExport: true }] } },
+  { files: ["supabase/functions/**/*.ts"], languageOptions: { globals: { Deno: "readonly" } } }
 );
