@@ -15,6 +15,7 @@ if (sourceManifest.version !== packageJson.version) failures.push("package and m
 if (process.env.RELEASE_TAG && process.env.RELEASE_TAG !== `v${packageJson.version}`) failures.push(`release tag ${process.env.RELEASE_TAG} does not match package version v${packageJson.version}`);
 if (sourceManifest.manifest_version !== 3) failures.push("Chrome Manifest V3 is required");
 if (sourceManifest.permissions?.includes("<all_urls>") || sourceManifest.host_permissions?.includes("<all_urls>")) failures.push("broad <all_urls> access is not allowed");
+if (JSON.stringify(sourceManifest).includes("api.openai.com")) failures.push("the extension must not call OpenAI directly; Workpad AI goes through the ai-proxy Edge Function");
 if (!sourceManifest.content_security_policy?.extension_pages?.includes("object-src 'none'")) failures.push("extension CSP must block object sources");
 
 for (const legalFile of ["privacy.html", "terms.html", "refunds.html", "support.html", "delete-account.html"]) {

@@ -65,12 +65,10 @@
   <body>
     <main>
       <h1>Workpad Privacy Policy</h1>
-      <p class="meta">Last updated: 24 August 2026</p>
+      <p class="meta">Last updated: 21 October 2026</p>
       <p>
         Workpad is local-first. Note content, tags, settings, and backups are stored in your browser’s
-        IndexedDB on your device. An OpenAI API key, if added, is kept in Chrome session storage by
-        default. You may explicitly choose to remember it in Chrome local storage. Keys are excluded
-        from Workpad backups.
+        IndexedDB on your device.
       </p>
       <p>
         Workpad does not use analytics or tracking, and it does not collect browser history. An account
@@ -96,11 +94,16 @@
         website. You can deny the request; AI page reading will remain unavailable for that site.
       </p>
       <p>
-        AI features are optional. Nothing is sent to OpenAI merely by opening Workpad AI. When you choose
-        an AI action, Workpad sends the source you chose, the page title, a URL with its query and fragment
-        removed, your instruction, and a random safety identifier directly to OpenAI’s Responses API using
-        your API key. Results are stored only when you choose <strong>Save as note</strong>. Workpad requests
-        <code>store: false</code>; OpenAI’s own data controls and retention terms still apply.
+        AI features are optional and require a signed-in Workpad account. Nothing is sent merely by
+        opening Workpad AI. When you choose an AI action, Workpad sends the source you chose, the page
+        title, a URL with its query and fragment removed, and your instruction to Workpad’s AI service,
+        which runs on Supabase. The service forwards that content to OpenAI’s Responses API with
+        <code>store: false</code> and a pseudonymous safety identifier derived from your account
+        identifier. Workpad’s AI service does not store the source text, instruction or result. To enforce
+        plan limits it records, per account and month, the number of AI actions, token counts and credits
+        used, plus short-lived request reservations and a per-minute request counter. Results are stored
+        only when you choose <strong>Save as note</strong>. OpenAI’s own API data controls and retention
+        terms apply.
       </p>
       <p>
         Production builds may offer optional Workpad accounts. If you sign in, Supabase processes your
@@ -131,7 +134,7 @@
       </p>
       <p>
         Deleting extension data from Chrome or using Workpad’s reset option permanently removes local
-        Workpad data and the saved API key, but does not delete an opted-in cloud copy. Turning off sync
+        Workpad data, but does not delete an opted-in cloud copy. Turning off sync
         stops future transfers without deleting either copy. Choosing <strong>Delete account</strong> in
         Settings cancels an active subscription and permanently deletes the Supabase account, cloud notes,
         and associated Workpad billing records. Local notes remain until separately reset. Export a JSON

@@ -15,7 +15,12 @@ function limit(value: string | undefined): string {
 
 chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(console.error);
 
+// Workpad AI is hosted now; remove keys and identifiers left by earlier bring-your-own-key builds.
+const LEGACY_AI_KEYS = ["openaiApiKey", "aiSafetyIdentifier"];
+
 chrome.runtime.onInstalled.addListener(() => {
+  chrome.storage.local.remove(LEGACY_AI_KEYS).catch(console.error);
+  chrome.storage.session.remove(LEGACY_AI_KEYS).catch(console.error);
   chrome.contextMenus.removeAll(() => {
     chrome.contextMenus.create({
       id: "save-selection",

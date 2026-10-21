@@ -55,6 +55,20 @@ export async function adminRequest(path: string, init: RequestInit = {}): Promis
   return text ? JSON.parse(text) : undefined;
 }
 
+/** Calls a service-role-only database function and surfaces the Postgres error message (for example a raised quota code). */
+export async function adminRpc<T>(name: string, args: Record<string, unknown>): Promise<T> {
+  const key = secretKey();
+  const response = await fetch(`${requiredEnv("SUPABASE_URL")}/rest/v1/rpc/${name}`, {
+    method: "POST",
+    headers: { apikey: key, authorization: `Bearer ${key}`, "content-type": "application/json" },
+    body: JSON.stringify(args)
+  });
+  const text = await response.text();
+  const payload = text ? JSON.parse(text) : undefined;
+  if (!response.ok) throw new Error(typeof payload?.message === "string" ? payload.message : `Database request failed (${response.status})`);
+  return payload as T;
+}
+
 export async function stripeRequest(path: string, parameters?: URLSearchParams): Promise<Record<string, unknown>> {
   const response = await fetch(`https://api.stripe.com/v1/${path}`, {
     method: parameters ? "POST" : "GET",

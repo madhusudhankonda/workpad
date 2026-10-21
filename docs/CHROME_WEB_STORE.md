@@ -24,7 +24,7 @@ Workpad is a private, local-first notebook that lives in Chrome's side panel. Cr
 
 - Move between a focused This Page view and your complete notes collection
 - Save selected webpage text from the right-click menu
-- Summarize, translate, explain, or extract action points from a page or selection with your own OpenAI API key
+- Summarize, translate, explain, or extract action points from a page or selection with Workpad AI, included with a free monthly allowance
 - Save an explicitly opened Gmail or Outlook message as a note, then extract actions, draft a reply, schedule a reminder, or track a subscription
 - Inspect the evidence behind an AI answer by clicking a citation to highlight its supporting passage on the webpage
 - Search, tag, favourite, export, and back up notes locally
@@ -72,11 +72,10 @@ Use this permission justification:
 | `identity` | Opens the optional Supabase/Google sign-in flow for paid-plan entitlements. |
 | `alarms` | Schedules a reminder only after the user chooses a reminder date for a saved note. |
 | `notifications` | Shows a user-created Workpad reminder at its scheduled time. |
-| `https://api.openai.com/*` | Sends a user-chosen page or selection to OpenAI only after the user chooses an AI action. |
 | Optional current-site access | Restores page reading when Chrome's temporary `activeTab` grant is unavailable. Requested only after the user clicks Allow access. |
-| Optional Supabase project access | Connects to account, entitlement and billing endpoints after sign-in, and transfers saved notes only after the user separately enables cloud sync. |
+| Optional Supabase project access | Connects to account, entitlement, billing and Workpad AI endpoints after sign-in. Sends a user-chosen page or selection to Workpad AI only after the user chooses an AI action, and transfers saved notes only after the user separately enables cloud sync. |
 
-Workpad does not collect browsing history or use analytics. AI features are optional and send only user-chosen content directly to OpenAI using the user's API key.
+Workpad does not collect browsing history or use analytics. AI features are optional, require sign-in, and send only user-chosen content to Workpad's AI service, which forwards it to OpenAI without storing it.
 
 ## Final manual acceptance test
 
@@ -85,7 +84,7 @@ Workpad does not collect browsing history or use analytics. AI features are opti
 - Page-linked and general notes persist after Chrome restarts.
 - Context menu saves selection on an HTTPS website.
 - AI can switch between full-page and selected-text input, run every preset, stop a request, inspect cited evidence on the page, and save the result with its evidence as a page note.
-- Removing the API key disables generation, and exports never contain the key.
+- Signed-out users see a sign-in prompt instead of AI actions; the credit counter decreases after each action; an exhausted allowance blocks actions with a clear message.
 - JSON export/import and reset confirmation work.
 - Signing in does not upload notes; enabling sync merges them, offline changes retry, deletions propagate, and turning sync off preserves both copies.
 - Privacy-policy URL is public and functional.
