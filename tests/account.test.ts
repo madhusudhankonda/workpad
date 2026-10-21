@@ -52,6 +52,12 @@ describe("Workpad account authentication", () => {
       method: "POST",
       body: expect.stringContaining('"provider":"google"')
     }));
+    // Supabase must get the raw nonce whose SHA-256 is the nonce Google put in the ID token.
+    const body = JSON.parse(String((fetchMock.mock.calls[0][1] as RequestInit).body)) as { nonce?: string };
+    expect(body.nonce).toBeTruthy();
+    const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(body.nonce));
+    const hashed = Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+    expect(authUrl.searchParams.get("nonce")).toBe(hashed);
     expect(session.email).toBe("person@example.com");
     expect(session.userId).toBe("user-1");
     expect(sessionSet).toHaveBeenCalled();

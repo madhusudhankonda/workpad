@@ -49,6 +49,11 @@ function randomOAuthValue(): string {
   return Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
+async function sha256Hex(value: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(value));
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
 function decodeJwtPayload(token: string): Record<string, unknown> {
   const encoded = token.split(".")[1];
   if (!encoded) throw new Error("Google returned a malformed identity token.");
@@ -98,7 +103,9 @@ export async function signInWithGoogle(): Promise<AccountSession> {
   if (!oauth?.client_id || !oauth.scopes?.length) throw new Error("Google sign-in is not configured in this build.");
   const redirectUrl = chrome.identity.getRedirectURL();
   const state = randomOAuthValue();
-  const nonce = randomOAuthValue();
+  // Google receives the SHA-256 of the nonce; Supabase receives the raw nonce and checks it hashes to the token's value.
+  const rawNonce = randomOAuthValue();
+  const nonce = await sha256Hex(rawNonce);
   const authorization = new URL("https://accounts.google.com/o/oauth2/auth");
   authorization.searchParams.set("client_id", oauth.client_id);
   authorization.searchParams.set("response_type", "id_token");
@@ -119,7 +126,7 @@ export async function signInWithGoogle(): Promise<AccountSession> {
   const response = await fetch(`${url}/auth/v1/token?grant_type=id_token`, {
     method: "POST",
     headers: { apikey: key, "content-type": "application/json" },
-    body: JSON.stringify({ provider: "google", id_token: idToken })
+    body: JSON.stringify({ provider: "google", id_token: idToken, nonce: rawNonce })
   });
   const payload = await response.json() as Record<string, unknown>;
   if (!response.ok) throw new Error(String(payload.msg ?? payload.message ?? payload.error_description ?? "Unable to sign in to Workpad."));
