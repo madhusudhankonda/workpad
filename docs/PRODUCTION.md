@@ -24,7 +24,7 @@ STRIPE_PRO_PRICE_ID
 WORKPAD_BILLING_RETURN_URL
 ```
 
-Never commit these values. Deploy `create-checkout`, `customer-portal`, `delete-account`, `stripe-webhook`, and `billing-return`. During development, set `WORKPAD_BILLING_RETURN_URL` to the Supabase `billing-return` URL. For launch, switch it to the HTTPS URL hosting `docs/billing.html` after that page is live. Register the webhook URL:
+Never commit these values. Deploy `ai-proxy`, `create-checkout`, `customer-portal`, `delete-account`, `stripe-webhook`, and `billing-return`. During development, set `WORKPAD_BILLING_RETURN_URL` to the Supabase `billing-return` URL. For launch, switch it to the HTTPS URL hosting `docs/billing.html` after that page is live. Register the webhook URL:
 
 ```text
 https://<project-ref>.supabase.co/functions/v1/stripe-webhook
@@ -69,4 +69,29 @@ Configure repository secrets `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_
 - Error monitoring scrubs URLs, page content, note content, API keys and authentication tokens.
 - Live Stripe and Supabase secrets are stored only in their secret managers.
 
-The current paid foundation is BYOK: users supply their own OpenAI key. A managed-AI tier requires a separate authenticated server-side OpenAI proxy, quota enforcement and usage accounting before launch.
+## 5. Hosted AI
+
+Workpad AI runs through the `ai-proxy` Edge Function. Users never supply an OpenAI key, and the extension has no OpenAI host permission.
+
+Set these additional Edge Function secrets:
+
+```text
+OPENAI_API_KEY
+WORKPAD_AI_MODEL      # optional, defaults to gpt-5.6-luna
+WORKPAD_AI_ENABLED    # optional; set to false to pause AI immediately
+```
+
+How it works:
+
+- The function verifies the user's Supabase session and chooses the model, instructions, output limit and reasoning effort itself. Client-supplied model or instruction fields are ignored.
+- Usage is measured in credits. One credit is 10,000 weighted tokens, with output tokens weighted four times. Every action costs at least one credit.
+- Before calling OpenAI, `reserve_ai_credits` reserves the worst-case cost under a per-user lock and enforces the monthly allowance, a per-minute request limit and a concurrent-request limit. `settle_ai_credits` then charges the real token usage, or releases the reservation if the request failed. Reservations expire after three minutes if the function crashes.
+- Monthly allowances, source-size limits and rate limits live in the `ai_plan_limits` table. The seeded values (free: 30 credits, 40,000 characters; Pro: 600 credits, 80,000 characters) are placeholders. Measure real cost per action in staging and update the table before launch; no deploy is needed.
+- Request content is never stored or logged. `ai_usage_monthly` records action, token and credit counts per user and month.
+
+Launch checks for hosted AI:
+
+- Set a monthly budget and usage alerts on the OpenAI project that owns `OPENAI_API_KEY`.
+- Confirm `WORKPAD_AI_ENABLED=false` returns a maintenance message without calling OpenAI.
+- Run 20–30 representative actions in staging, compare `ai_usage_monthly` against the OpenAI usage dashboard, and set the Pro price and allowances so gross margin stays healthy.
+- Test exhausted credits, rate limiting, a cancelled request and an OpenAI outage; none should leave a reservation charged.

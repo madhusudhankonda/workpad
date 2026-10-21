@@ -194,12 +194,9 @@ Findings from reviewing the current code:
 
 ## Monetization
 
-Users currently supply their own OpenAI API key, and the paid plan unlocks cloud sync. A decision brief therefore cannot be the paid outcome on its own: the AI costs the user nothing extra from Workpad. Options:
+Decided: Workpad hosts the AI. Users do not supply an OpenAI key. Every signed-in user gets a small monthly allowance of token-weighted credits, and the paid plan adds a larger allowance, longer sources and cloud sync. Decision briefs consume more credits than single-page actions, which makes them the main reason to upgrade.
 
-1. Gate research projects and decision briefs behind the paid plan regardless of who pays for the AI.
-2. Offer hosted AI calls in the paid plan, so no API key is needed, with the brief as the main paid feature.
-
-This is unresolved and must be decided before phase 4.
+The Pro price must be set from measured cost per brief; the current £1.99/month was priced for sync only.
 
 ## Delivery sequence
 
