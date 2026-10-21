@@ -6,7 +6,10 @@ coverage/
 *.tsbuildinfo
 .env
 .env.*
+!.env.example
+!supabase/functions/.env.example
 .hyperframes/
 videos/
 snapshots/
 renders/
+supabase/.temp/
