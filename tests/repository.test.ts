@@ -1,10 +1,10 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { db } from "../src/db/database";
+import { db, defaultSettings } from "../src/db/database";
 import { notesRepository } from "../src/db/repositories/notesRepository";
 import { validateBackup } from "../src/utils/backup";
 
 describe("notes repository", () => {
-  beforeEach(async () => { await db.notes.clear(); });
+  beforeEach(async () => { await db.notes.clear(); await db.noteSync.clear(); await db.settings.put(defaultSettings); });
   it("creates and searches notes", async () => {
     const note = await notesRepository.create({ title: "Project brief", content: "A useful research note", type: "standalone", tags: ["work"], isFavourite: false, isArchived: false });
     expect(note.id).toBeTruthy();
