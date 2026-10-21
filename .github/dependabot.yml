@@ -9,7 +9,17 @@ updates:
         dependency-type: production
       development-dependencies:
         dependency-type: development
+    ignore:
+      # typescript-eslint 8 supports TypeScript below 6.1; revisit when it supports 7.
+      - dependency-name: typescript
+        update-types: ["version-update:semver-major"]
+      # Tailwind 4 needs a config and CSS migration; do it as its own change.
+      - dependency-name: tailwindcss
+        update-types: ["version-update:semver-major"]
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: monthly
+    groups:
+      github-actions:
+        patterns: ["*"]
