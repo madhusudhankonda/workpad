@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { AlertCircle, Check, FileText, Languages, Lightbulb, ListChecks, LoaderCircle, Save, Share2, Sparkles, Square, X } from "lucide-react";
-import { runOpenAIAction } from "../services/ai";
+import { AIRequestError, getAIUsage, runAIAction, type AIUsage } from "../services/ai";
+import { currentSession, isAccountConfigured, signInWithGoogle } from "../services/account";
 import { buildEvidencePassages, evidenceSource, extractActivePageContent, highlightPageEvidence, PageAccessError, requestPageAccess } from "../services/pageContent";
-import { getOpenAIKey, saveOpenAIKey } from "../services/apiKeyStorage";
 import type { AIAction, EvidencePassage, ExtractedPageContent, Settings } from "../types";
 
 const actions: { id: AIAction; label: string; description: string; icon: typeof Sparkles }[] = [
@@ -110,10 +110,10 @@ export function AIWorkspace({ settings, onClose, onSave, initialPrompt = "", soc
   const [action, setAction] = useState<AIAction>(initialPrompt ? "custom" : "summary");
   const [targetLanguage, setTargetLanguage] = useState("");
   const [customPrompt, setCustomPrompt] = useState(initialPrompt);
-  const [apiKey, setApiKey] = useState("");
-  const [safetyIdentifier, setSafetyIdentifier] = useState(() => `workpad_${crypto.randomUUID()}`);
-  const [keyDraft, setKeyDraft] = useState("");
-  const [rememberKey, setRememberKey] = useState(false);
+  const [access, setAccess] = useState<"checking" | "unconfigured" | "signed-out" | "ready">(isAccountConfigured() ? "checking" : "unconfigured");
+  const [usage, setUsage] = useState<AIUsage>();
+  const [signingIn, setSigningIn] = useState(false);
+  const [model, setModel] = useState("");
   const [running, setRunning] = useState(false);
   const [saving, setSaving] = useState(false);
   const [result, setResult] = useState("");
@@ -147,25 +147,47 @@ export function AIWorkspace({ settings, onClose, onSave, initialPrompt = "", soc
       if (loadError instanceof PageAccessError) setPageAccessUrl(loadError.pageUrl);
       setPageError(loadError instanceof Error ? loadError.message : "Could not read this page.");
     }).finally(() => setLoadingPage(false));
-    void getOpenAIKey().then(({ key }) => setApiKey(key));
-    void chrome.storage.local.get("aiSafetyIdentifier").then(({ aiSafetyIdentifier }) => {
-      if (typeof aiSafetyIdentifier === "string") setSafetyIdentifier(aiSafetyIdentifier);
-      else void chrome.storage.local.set({ aiSafetyIdentifier: safetyIdentifier });
-    });
+    if (isAccountConfigured()) void loadAccess();
     return () => abortRef.current?.abort();
   }, [settings.aiMaxSourceCharacters]);
 
   const source = useMemo(() => sourceMode === "selection" ? page?.selection ?? "" : page?.text ?? "", [page, sourceMode]);
-  const passages = useMemo(() => buildEvidencePassages(source), [source]);
-  const canRunAction = (requestedAction: AIAction) => Boolean(apiKey && source && !running && (requestedAction !== "custom" || customPrompt.trim()));
+  const sourceLimit = usage?.maxSourceCharacters;
+  const passages = useMemo(() => {
+    const all = buildEvidencePassages(source);
+    if (!sourceLimit) return all;
+    // Keep whole passages that fit the plan's source limit, including their [P#] labels.
+    const kept: EvidencePassage[] = [];
+    let length = 0;
+    for (const passage of all) {
+      length += passage.text.length + passage.id.length + 5;
+      if (length > sourceLimit) break;
+      kept.push(passage);
+    }
+    return kept;
+  }, [source, sourceLimit]);
+  const shortenedForPlan = Boolean(sourceLimit) && evidenceSource(passages).length < evidenceSource(buildEvidencePassages(source)).length;
+  const outOfCredits = usage ? usage.creditsRemaining <= 0 : false;
+  const ready = access === "ready" && !outOfCredits;
+  const canRunAction = (requestedAction: AIAction) => Boolean(ready && passages.length && !running && (requestedAction !== "custom" || customPrompt.trim()));
 
-  const saveKey = async () => {
-    const value = keyDraft.trim();
-    if (!value) return;
+  async function loadAccess() {
     try {
-      await saveOpenAIKey(value, rememberKey);
-      setApiKey(value); setKeyDraft(""); setError("");
-    } catch (saveError) { setError(saveError instanceof Error ? saveError.message : "Could not save the API key."); }
+      const session = await currentSession();
+      if (!session) { setAccess("signed-out"); return; }
+      setUsage(await getAIUsage(session));
+      setAccess("ready");
+    } catch (accessError) {
+      setAccess("signed-out");
+      setError(accessError instanceof Error ? accessError.message : "Unable to load your Workpad account.");
+    }
+  }
+
+  const signIn = async () => {
+    setSigningIn(true); setError("");
+    try { await signInWithGoogle(); await loadAccess(); }
+    catch (signInError) { setError(signInError instanceof Error ? signInError.message : "Sign-in failed."); }
+    finally { setSigningIn(false); }
   };
 
   const run = async (requestedAction: AIAction = action, requestedLanguage = targetLanguage) => {
@@ -173,18 +195,21 @@ export function AIWorkspace({ settings, onClose, onSave, initialPrompt = "", soc
     const controller = new AbortController(); abortRef.current = controller;
     setAction(requestedAction); setRunning(true); setResult(""); setError(""); setSaved(false);
     try {
-      setResult(await runOpenAIAction({
-        apiKey,
-        model: settings.aiModel,
+      const response = await runAIAction({
         action: requestedAction,
         source: evidenceSource(passages),
         pageTitle: page.title,
         pageUrl: page.url,
         targetLanguage: requestedLanguage,
-        customPrompt,
-        safetyIdentifier
-      }, controller.signal));
+        customPrompt
+      }, controller.signal);
+      setResult(response.text);
+      setModel(response.model);
+      const charged = response.usage;
+      if (charged) setUsage((current) => current && { ...current, creditsUsed: charged.creditsUsed, creditsLimit: charged.creditsLimit, creditsRemaining: charged.creditsRemaining, periodEnd: charged.periodEnd });
     } catch (runError) {
+      if (runError instanceof AIRequestError && runError.code === "unauthenticated") setAccess("signed-out");
+      if (runError instanceof AIRequestError && runError.code === "quota_exceeded") setUsage((current) => current && { ...current, creditsRemaining: 0 });
       if ((runError as Error)?.name !== "AbortError") setError(runError instanceof Error ? runError.message : "The AI request failed.");
     } finally { setRunning(false); abortRef.current = undefined; }
   };
@@ -201,7 +226,7 @@ export function AIWorkspace({ settings, onClose, onSave, initialPrompt = "", soc
       await onSave({
         action,
         title: `${actionTitles[action]}: ${page.title}`,
-        content: `${result}${evidence}\n\n---\nSource: [${page.title}](${page.url})\nGenerated by Workpad AI · ${settings.aiModel}`
+        content: `${result}${evidence}\n\n---\nSource: [${page.title}](${page.url})\nGenerated by Workpad AI${model ? ` · ${model}` : ""}`
       });
       setSaved(true);
     } catch (saveError) {
@@ -224,16 +249,18 @@ export function AIWorkspace({ settings, onClose, onSave, initialPrompt = "", soc
       <header className="ai-header"><div><span className="ai-kicker"><Sparkles size={12}/> WORKPAD AI</span><h2>Turn this page into useful work.</h2></div><button aria-label="Close AI workspace" onClick={onClose}><X size={18}/></button></header>
 
       <div className="ai-scroll">
-        {!apiKey && <section className="ai-setup"><div className="ai-setup-icon"><Sparkles size={18}/></div><div><strong>Connect OpenAI</strong><p>Your key is kept for this Chrome session by default. Page text is sent only when you run an AI action.</p></div><div className="ai-key-row"><input type="password" autoComplete="off" placeholder="sk-…" aria-label="OpenAI API key" value={keyDraft} onChange={(event) => setKeyDraft(event.target.value)} onKeyDown={(event) => { if (event.key === "Enter") void saveKey(); }}/><button disabled={!keyDraft.trim()} onClick={() => void saveKey()}>Use key</button></div><label className="ai-key-remember"><input type="checkbox" checked={rememberKey} onChange={(event) => setRememberKey(event.target.checked)}/><span>Remember on this device</span></label><small className="ai-key-note">{rememberKey ? "The key remains after Chrome or Workpad reloads. It is excluded from exports and cloud sync." : "Session-only keys are removed when Chrome closes or the unpacked extension is reloaded."}</small></section>}
+        {access === "unconfigured" && <section className="ai-setup"><div className="ai-setup-icon"><Sparkles size={18}/></div><div><strong>Workpad AI is unavailable</strong><p>Accounts are not configured in this build, so Workpad AI cannot be used.</p></div></section>}
+        {access === "signed-out" && <section className="ai-setup"><div className="ai-setup-icon"><Sparkles size={18}/></div><div><strong>Sign in to use Workpad AI</strong><p>Workpad AI is included with your Workpad account, with a monthly allowance of credits. Page text is sent only when you run an AI action.</p></div><div className="ai-key-row"><button disabled={signingIn} onClick={() => void signIn()}>{signingIn ? "Signing in…" : "Sign in with Google"}</button></div></section>}
+        {access === "ready" && outOfCredits && usage && <section className="ai-setup"><div className="ai-setup-icon"><Sparkles size={18}/></div><div><strong>You have used this month's AI credits</strong><p>{usage.plan === "pro" ? "Your credits renew" : "Upgrade to Workpad Pro in Settings for more credits, or wait until they renew"} on {new Date(usage.periodEnd).toLocaleDateString()}.</p></div></section>}
 
         <section className="ai-source-section"><div className="ai-section-title"><span>1</span><div><strong>Choose the source</strong><small>Nothing is sent until you choose an AI action.</small></div></div>
           {loadingPage ? <div className="ai-loading"><LoaderCircle size={16}/> Reading the page…</div> : pageError ? <div className="ai-error"><AlertCircle size={15}/><span>{pageError}</span><button onClick={retryPage}>{needsPageAccess ? "Allow access" : "Try again"}</button></div> : page && <>
             <div className="source-switch"><button className={sourceMode === "page" ? "active" : ""} onClick={() => setSourceMode("page")}>Full page <span>{page.text.length.toLocaleString()} chars</span></button><button disabled={!page.selection} className={sourceMode === "selection" ? "active" : ""} onClick={() => setSourceMode("selection")}>Selection <span>{page.selection ? `${page.selection.length.toLocaleString()} chars` : "None"}</span></button></div>
-          <div className="source-preview"><strong>{page.title}</strong><p>{source.slice(0, 360)}{source.length > 360 ? "…" : ""}</p><small>{passages.length.toLocaleString()} traceable evidence passages{page.truncated && sourceMode === "page" ? ` · Long page: using ${settings.aiMaxSourceCharacters.toLocaleString()} characters` : ""}</small></div>
+          <div className="source-preview"><strong>{page.title}</strong><p>{source.slice(0, 360)}{source.length > 360 ? "…" : ""}</p><small>{passages.length.toLocaleString()} traceable evidence passages{page.truncated && sourceMode === "page" ? ` · Long page: using ${settings.aiMaxSourceCharacters.toLocaleString()} characters` : ""}{shortenedForPlan && sourceLimit ? ` · Shortened to your plan limit of ${sourceLimit.toLocaleString()} characters` : ""}</small></div>
           </>}
         </section>
 
-        <section><div className="ai-section-title"><span>2</span><div><strong>Choose an AI action</strong><small>Click a preset to run it, or write your own instruction.</small></div></div><div className="ai-action-grid">{actions.map((item) => <button key={item.id} disabled={!apiKey || !source || running} className={action === item.id ? "active" : ""} onClick={() => { if (item.id === "custom" || (item.id === "translate" && !targetLanguage)) { setAction(item.id); setResult(""); setSaved(false); } else void run(item.id); }}><item.icon size={16}/><span><strong>{item.label}</strong><small>{item.description}</small></span></button>)}</div>
+        <section><div className="ai-section-title"><span>2</span><div><strong>Choose an AI action</strong><small>Click a preset to run it, or write your own instruction.</small></div></div><div className="ai-action-grid">{actions.map((item) => <button key={item.id} disabled={!ready || !passages.length || running} className={action === item.id ? "active" : ""} onClick={() => { if (item.id === "custom" || (item.id === "translate" && !targetLanguage)) { setAction(item.id); setResult(""); setSaved(false); } else void run(item.id); }}><item.icon size={16}/><span><strong>{item.label}</strong><small>{item.description}</small></span></button>)}</div>
           {action === "translate" && <label className="ai-field">Translate into<select disabled={running} value={targetLanguage} onChange={(event) => { const language = event.target.value; setTargetLanguage(language); void run("translate", language); }}><option value="" disabled>Choose a language…</option><option>English</option><option>Spanish</option><option>French</option><option>German</option><option>Italian</option><option>Portuguese</option><option>Hindi</option><option>Japanese</option><option>Korean</option><option>Chinese (Simplified)</option><option>Arabic</option></select></label>}
           {action === "custom" && <label className="ai-field">Your instruction<textarea rows={3} placeholder="For example: Compare the arguments and identify weak assumptions…" value={customPrompt} onChange={(event) => setCustomPrompt(event.target.value)} onKeyDown={(event) => { if ((event.metaKey || event.ctrlKey) && event.key === "Enter") void run("custom"); }}/><button className="ai-ask-button" disabled={!canRunAction("custom")} onClick={() => void run("custom")}><Sparkles size={14}/> Ask Workpad</button></label>}
         </section>
@@ -241,7 +268,7 @@ export function AIWorkspace({ settings, onClose, onSave, initialPrompt = "", soc
         {(running || result || error) && <section className="ai-result-section"><div className="ai-section-title"><span>3</span><div><strong>Review the result</strong><small>Click any [P#] citation to inspect its evidence on the page.</small></div></div>{running ? <div className="ai-generating"><span className="ai-orb"><LoaderCircle className="spinning" size={20}/></span><strong>Working through the source…</strong><p>This can take a moment for longer pages.</p><button onClick={() => abortRef.current?.abort()}><Square size={11}/> Stop</button></div> : result ? <><div className="ai-result"><MarkdownResult text={result} evidence={passages} onCitation={(passage) => void inspectEvidence(passage)}/></div>{evidenceStatus && <p className="evidence-status" role="status">{evidenceStatus}</p>}{onUseForSocial && socialPlatform && <div className="ai-share-results"><div><Share2 size={14}/><span><strong>Use this draft on</strong><small>Written for {socialPlatform === "x" ? "X" : socialPlatform === "reddit" ? "Reddit" : "LinkedIn"}; review it when reusing elsewhere.</small></span></div><div>{(["x", "reddit", "linkedin"] as const).map((platform) => <button className={platform === socialPlatform ? "preferred" : ""} key={platform} onClick={() => onUseForSocial(result, platform)}>{platform === "x" ? "X" : platform === "reddit" ? "Reddit" : "LinkedIn"}</button>)}</div></div>}</> : null}{error && <div className="ai-error"><AlertCircle size={15}/><span>{error}</span></div>}</section>}
       </div>
 
-      <footer className="ai-footer"><span>{apiKey ? `${settings.aiModel} · OpenAI` : "Add an API key to continue"}</span>{result && <button className="secondary" disabled={saving || saved} onClick={() => void save()}>{saved ? <><Check size={15}/> Saved to notes</> : <><Save size={15}/>{saving ? "Saving…" : "Save as note"}</>}</button>}</footer>
+      <footer className="ai-footer"><span>{access === "ready" && usage ? `Workpad AI · ${usage.creditsRemaining.toLocaleString()} of ${usage.creditsLimit.toLocaleString()} credits left` : access === "checking" ? "Checking your account…" : "Workpad AI · not signed in"}</span>{result && <button className="secondary" disabled={saving || saved} onClick={() => void save()}>{saved ? <><Check size={15}/> Saved to notes</> : <><Save size={15}/>{saving ? "Saving…" : "Save as note"}</>}</button>}</footer>
     </section>
   </div>;
 }

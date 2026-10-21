@@ -29,7 +29,6 @@ export const defaultSettings: Settings = {
   autoSaveDebounce: 650,
   removeTrackingParameters: true,
   onboardingCompleted: false,
-  aiModel: "gpt-5.6-luna",
   aiMaxSourceCharacters: 40_000,
   cloudSyncEnabled: false
 };

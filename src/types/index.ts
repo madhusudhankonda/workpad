@@ -32,7 +32,6 @@ export interface Settings {
   autoSaveDebounce: number;
   removeTrackingParameters: boolean;
   onboardingCompleted: boolean;
-  aiModel: "gpt-5.6-luna" | "gpt-5.6-terra" | "gpt-5.6-sol";
   aiMaxSourceCharacters: number;
   cloudSyncEnabled: boolean;
   cloudSyncUserId?: string;
