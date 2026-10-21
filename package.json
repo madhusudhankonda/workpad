@@ -17,10 +17,10 @@
     "package:release": "VITE_ALLOW_FREE_SYNC=false npm run validate:production && VITE_ALLOW_FREE_SYNC=false npm run build && npm run validate:release && sh scripts/package-release.sh"
   },
   "dependencies": {
-    "dexie": "4.4.4",
-    "lucide-react": "1.24.0",
-    "react": "19.2.7",
-    "react-dom": "19.2.7"
+    "dexie": "4.4.6",
+    "lucide-react": "1.59.0",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
@@ -28,8 +28,8 @@
     "@testing-library/react": "16.3.2",
     "@types/chrome": "0.2.2",
     "@types/node": "26.1.1",
-    "@types/react": "19.2.17",
-    "@types/react-dom": "19.2.3",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
     "@vitejs/plugin-react": "6.0.3",
     "@vitest/coverage-v8": "4.1.10",
     "autoprefixer": "10.5.2",
