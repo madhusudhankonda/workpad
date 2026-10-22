@@ -1,5 +1,5 @@
 import { adminRpc, authenticatedUser, json, preflight, requiredEnv } from "../_shared/http.ts";
-import { buildInput, buildInstructions, creditsFor, MAX_OUTPUT_TOKENS, parseProxyRequest, readResponseText, readUsage, RequestError, reservationCredits } from "../_shared/ai.ts";
+import { buildInput, buildInstructions, creditsFor, MAX_OUTPUT_TOKENS, parseProxyRequest, readIncomplete, readResponseText, readUsage, RequestError, reservationCredits } from "../_shared/ai.ts";
 
 const DEFAULT_MODEL = "gpt-5.6-luna";
 const REQUEST_TIMEOUT_MS = 55_000;
@@ -97,16 +97,23 @@ Deno.serve(async (request: Request) => {
     }), request.signal);
 
     const text = readResponseText(response);
+    const completion = readIncomplete(response);
+    // No answer at all: release the reservation (in finally) instead of charging the user.
+    if (!text) {
+      if (completion.reason === "max_output_tokens") throw new RequestError("output_limit", "This request needed more than Workpad AI's answer length limit. Try a selection or a narrower instruction.", 502);
+      throw new RequestError("empty_response", "Workpad AI returned an empty response. Please try again.", 502);
+    }
     const usage = readUsage(response);
     const charged = usage.inputTokens || usage.outputTokens ? creditsFor(usage.inputTokens, usage.outputTokens) : requested;
     await adminRpc("settle_ai_credits", { target_reservation: reservation.reservation_id, actual_credits: charged, used_input_tokens: usage.inputTokens, used_output_tokens: usage.outputTokens });
     settled = true;
-    if (!text) throw new RequestError("empty_response", "Workpad AI returned an empty response. Please try again.", 502);
+    if (completion.incomplete) console.warn(`AI response incomplete: ${completion.reason ?? "unknown"}`);
 
     const creditsUsed = reservation.credits_used + charged;
     return json({
       text,
       model,
+      truncated: completion.incomplete,
       usage: {
         plan: reservation.plan,
         creditsCharged: charged,
