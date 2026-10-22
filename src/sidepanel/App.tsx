@@ -253,8 +253,18 @@ export function ContextBanner({ context, onCreateNote, onAskPage, onAddToResearc
   </div>;
 }
 
+/** Lists group notes by site and day, so cards show only what differs: title, a preview, the time and any tags. */
 export function NoteCard({ note, selected, onClick }: { note: Note; selected: boolean; onClick: () => void }) {
-  return <button className={`note-card ${selected ? "selected" : ""}`} onClick={onClick}><div className="note-card-title">{note.isFavourite && <Star size={13} fill="currentColor"/>}{displayNoteTitle(note)}</div><p>{note.content || "No content yet"}</p><footer><span className={`type-pill ${note.type}`}>{noteScopeLabel(note.type)}</span>{note.domain && <span>{note.domain}</span>}<time>{new Date(note.updatedAt).toLocaleDateString()}</time></footer>{note.tags.length > 0 && <div className="tags">{note.tags.slice(0, 3).map((tag) => <span key={tag}>#{tag}</span>)}</div>}</button>;
+  const updated = new Date(note.updatedAt);
+  const sameDay = updated.toDateString() === new Date().toDateString();
+  const when = sameDay ? updated.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" }) : updated.toLocaleDateString(undefined, { day: "numeric", month: "short" });
+  const tags = note.tags.filter((tag) => !tag.startsWith("reminder:"));
+  const preview = note.content.replace(/\s+/g, " ").trim();
+  return <button className={`note-card ${selected ? "selected" : ""}`} onClick={onClick}>
+    <div className="note-card-title">{note.isFavourite && <Star size={13} fill="currentColor"/>}{displayNoteTitle(note)}</div>
+    {preview && <p>{preview}</p>}
+    <footer>{note.type !== "page" && <span className={`type-pill ${note.type}`}>{noteScopeLabel(note.type)}</span>}{tags.slice(0, 3).map((tag) => <span className="card-tag" key={tag}>#{tag}</span>)}<time dateTime={note.updatedAt} title={updated.toLocaleString()}>{when}</time></footer>
+  </button>;
 }
 
 export function GroupedNotes({ notes, selectedId, select }: { notes: Note[]; selectedId?: string; select: (id: string) => void }) {

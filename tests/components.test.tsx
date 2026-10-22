@@ -7,6 +7,18 @@ import type { Note } from "../src/types";
 const note: Note = { id: "1", title: "Meeting notes", content: "Discussed launch", type: "page", pageUrl: "https://example.com", normalizedPageUrl: "https://example.com", domain: "example.com", tags: ["launch"], isFavourite: false, isArchived: false, createdAt: "2026-01-01", updatedAt: "2026-01-01" };
 
 describe("side panel components", () => {
+  it("keeps page note cards to title, preview, time and tags", () => {
+    const now = new Date().toISOString();
+    const { rerender } = render(<NoteCard note={{ ...note, type: "page", domain: "bbc.co.uk", content: "", updatedAt: now }} selected={false} onClick={vi.fn()}/>);
+    expect(screen.queryByText("No content yet")).not.toBeInTheDocument();
+    expect(screen.queryByText("This page")).not.toBeInTheDocument();
+    expect(screen.queryByText("bbc.co.uk")).not.toBeInTheDocument();
+    expect(screen.getByRole("time")).toHaveTextContent(new Date(now).toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" }));
+    rerender(<NoteCard note={{ ...note, type: "domain", content: "Line one\n\nLine two", tags: ["work", "reminder:2026-11-01"] }} selected={false} onClick={vi.fn()}/>);
+    expect(screen.getByText("Domain")).toBeInTheDocument();
+    expect(screen.getByText("Line one Line two")).toBeInTheDocument();
+    expect(screen.queryByText(/reminder:/)).not.toBeInTheDocument();
+  });
   it("renders a selectable note card", () => {
     const click = vi.fn();
     render(<NoteCard note={note} selected={false} onClick={click} />);
