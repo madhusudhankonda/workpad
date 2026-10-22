@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { AINudge, ContextBanner, Editor, EmptyState, GroupedNotes, NoteCard, SocialShareModal } from "../src/sidepanel/App";
+import { ContextBanner, Onboarding, Editor, EmptyState, GroupedNotes, NoteCard, SocialShareModal } from "../src/sidepanel/App";
 import { defaultNoteTitle, groupNotesByWebsiteAndDate, isNoteForSiteToday } from "../src/utils/noteOrganization";
 import type { Note } from "../src/types";
 
@@ -32,7 +32,7 @@ describe("side panel components", () => {
     expect(screen.getByText("Example")).toBeInTheDocument();
     expect(screen.getByText("Current page")).toBeInTheDocument();
     expect(screen.getByText(/example.com/)).toBeInTheDocument();
-    expect(screen.getByText("What would you like to do?")).toBeInTheDocument();
+    expect(screen.getByText("Ask Workpad AI about this page, or save it.")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Add note" }));
     fireEvent.click(screen.getByRole("button", { name: "Ask this page" }));
     expect(create).toHaveBeenCalledOnce();
@@ -70,14 +70,21 @@ describe("side panel components", () => {
     expect(isNoteForSiteToday(note, { ...context, domain: "other.example" }, new Date("2026-01-01T18:00:00"))).toBe(false);
     expect(isNoteForSiteToday(note, context, new Date("2026-01-02T18:00:00"))).toBe(false);
   });
-  it("offers a dismissible AI suggestion within Workpad", () => {
-    const tryAI = vi.fn();
-    const dismiss = vi.fn();
-    render(<AINudge onTry={tryAI} onDismiss={dismiss}/>);
-    fireEvent.click(screen.getByRole("button", { name: "Try AI on this page" }));
-    fireEvent.click(screen.getByRole("button", { name: "Dismiss AI suggestion" }));
-    expect(tryAI).toHaveBeenCalledOnce();
-    expect(dismiss).toHaveBeenCalledOnce();
+  it("leads the page banner with Ask this page", () => {
+    render(<ContextBanner context={{ url: "https://example.com/a", normalizedUrl: "https://example.com/a", domain: "example.com", title: "Example", restricted: false }} onCreateNote={vi.fn()} onAskPage={vi.fn()} onAddToResearch={vi.fn()}/>);
+    const buttons = screen.getAllByRole("button").map((button) => button.textContent?.trim());
+    expect(buttons).toEqual(["Ask this page", "Research", "Add note"]);
+    expect(screen.getByText("Ask Workpad AI about this page, or save it.")).toBeInTheDocument();
+  });
+  it("ends onboarding with a skippable sign-in step", () => {
+    const done = vi.fn();
+    const { rerender } = render(<Onboarding step={0} setStep={vi.fn()} done={done}/>);
+    expect(screen.getByRole("heading", { name: "Your AI research assistant beside every tab." })).toBeInTheDocument();
+    rerender(<Onboarding step={2} setStep={vi.fn()} done={done}/>);
+    expect(screen.getByRole("heading", { name: "Sign in to switch on Workpad AI." })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Sign in with Google" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Skip for now" }));
+    expect(done).toHaveBeenCalledOnce();
   });
   it("offers AI writing from the social composer", () => {
     const write = vi.fn();

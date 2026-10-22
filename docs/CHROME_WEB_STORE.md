@@ -16,11 +16,11 @@ Upload `workpad-0.1.0.zip` to the Chrome Web Store Developer Dashboard. The ZIP 
 
 **Support email:** ai@chocolateminds.com
 
-**Short description:** Contextual notes that stay beside the webpage you are working on.
+**Short description:** AI research assistant in your side panel: ask about any page, collect sources and get decision briefs with cited evidence.
 
 **Full description:**
 
-Workpad is a private, local-first notebook that lives in Chrome's side panel. Create notes for the page you are viewing, keep general notes, and return to your research with the right context already waiting.
+Workpad is an AI research assistant in Chrome's side panel. Summarise and question the page you're on, collect pages, selections and emails into research projects, ask across them with every claim cited, and turn them into a decision brief you can defend. Notes and sources stay on your device; page text is sent to Workpad AI only when you choose an AI action.
 
 - Move between a focused This Page view and your complete notes collection
 - Save selected webpage text from the right-click menu
@@ -69,13 +69,13 @@ Use this permission justification:
 | `contextMenus` | Lets users explicitly save selected text or a page link. |
 | `storage` | Temporarily transfers a user-requested capture from the service worker to Workpad. |
 | `scripting` | Reads visible text from the active page only when the user opens Workpad AI or explicitly clicks Save email on supported Gmail or Outlook pages. |
-| `identity` | Opens the optional Supabase/Google sign-in flow for paid-plan entitlements. |
+| `identity` | Opens Google sign-in for the Workpad account that Workpad AI and paid plans use. |
 | `alarms` | Schedules a reminder only after the user chooses a reminder date for a saved note. |
 | `notifications` | Shows a user-created Workpad reminder at its scheduled time. |
 | Optional current-site access | Restores page reading when Chrome's temporary `activeTab` grant is unavailable. Requested only after the user clicks Allow access. |
 | Optional Supabase project access | Connects to account, entitlement, billing and Workpad AI endpoints after sign-in. Sends a user-chosen page or selection to Workpad AI only after the user chooses an AI action, and transfers saved notes only after the user separately enables cloud sync. |
 
-Workpad does not collect browsing history or use analytics. AI features are optional, require sign-in, and send only user-chosen content to Workpad's AI service, which forwards it to OpenAI without storing it.
+Workpad does not collect browsing history or use analytics. Workpad AI requires sign-in and sends only user-chosen content to Workpad's AI service, which forwards it to OpenAI without storing it.
 
 ## Final manual acceptance test
 
