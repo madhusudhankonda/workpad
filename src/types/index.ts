@@ -94,7 +94,7 @@ export interface WorkpadBackup {
   settings?: Settings;
 }
 
-export type AIAction = "summary" | "translate" | "actions" | "explain" | "custom";
+export type AIAction = "summary" | "translate" | "actions" | "explain" | "custom" | "research_question";
 
 export interface ExtractedPageContent {
   title: string;

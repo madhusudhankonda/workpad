@@ -18,18 +18,19 @@ const actionTitles: Record<AIAction, string> = {
   translate: "Translation",
   actions: "Action points",
   explain: "Explanation",
-  custom: "AI analysis"
+  custom: "AI analysis",
+  research_question: "Research answer"
 };
 
 function inlineMarkdown(text: string, passages: Map<string, EvidencePassage>, onCitation?: (passage: EvidencePassage) => void): ReactNode[] {
-  const pattern = /(\*\*[^*]+\*\*|`[^`]+`|\[[^\]]+\]\(https?:\/\/[^)]+\)|\[P\d+\])/g;
+  const pattern = /(\*\*[^*]+\*\*|`[^`]+`|\[[^\]]+\]\(https?:\/\/[^)]+\)|\[(?:S\d+:)?P\d+\])/g;
   const output: ReactNode[] = [];
   let cursor = 0;
   for (const match of text.matchAll(pattern)) {
     const index = match.index ?? 0;
     if (index > cursor) output.push(text.slice(cursor, index));
     const token = match[0];
-    if (/^\[P\d+\]$/.test(token)) {
+    if (/^\[(?:S\d+:)?P\d+\]$/.test(token)) {
       const passage = passages.get(token.slice(1, -1));
       output.push(passage && onCitation
         ? <button className="evidence-citation" key={`${index}-citation`} title="View supporting passage" onClick={() => onCitation(passage)}>{token}</button>
