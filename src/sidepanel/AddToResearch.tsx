@@ -23,11 +23,13 @@ async function loadDrafts(request: CaptureRequest, removeTracking: boolean): Pro
   return { primary: page, selection };
 }
 
-export function AddToResearch({ request, removeTracking, onClose, onOpenProject }: {
+export function AddToResearch({ request, removeTracking, onClose, onOpenProject, onAdded }: {
   request: CaptureRequest;
   removeTracking: boolean;
   onClose: () => void;
   onOpenProject: (projectId: string) => void;
+  /** Called after a source is stored, so open project views can refresh. */
+  onAdded?: (projectId: string) => void;
 }) {
   const [drafts, setDrafts] = useState<{ primary: CaptureDraft; selection?: CaptureDraft }>();
   const [useSelection, setUseSelection] = useState(false);
@@ -72,6 +74,7 @@ export function AddToResearch({ request, removeTracking, onClose, onOpenProject 
       const { status } = await sourcesRepository.addToProject(projectId, draft);
       const projectName = projects.find((project) => project.id === projectId)?.name ?? "the project";
       setResult({ status, projectId, projectName });
+      onAdded?.(projectId);
     } catch (addError) { setError(addError instanceof Error ? addError.message : "Could not add this source."); }
     finally { setBusy(false); }
   };

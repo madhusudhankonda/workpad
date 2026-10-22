@@ -55,7 +55,7 @@ export function ProjectPicker({ projects, selectedId, onSelect, onCreate, create
         </form>
       : <button className="project-new" onClick={() => setCreating(true)}><Plus size={14}/>New research project</button>}
     {projects.map((project) => <button key={project.id} className={`note-card${selectedId === project.id ? " selected" : ""}`} aria-current={selectedId === project.id ? "true" : undefined} onClick={() => onSelect(project.id)}>
-      <div className="note-card-title"><FolderOpen size={13}/>{project.name}</div>
+      <div className="note-card-title wrap-title"><FolderOpen size={13}/><span>{project.name}</span></div>
       {project.description && <p>{project.description}</p>}
       <footer><span>{sourceLabel(project.sourceCount)}</span><time dateTime={project.lastActivityAt}>{shortDate(project.lastActivityAt)}</time></footer>
     </button>)}
@@ -104,7 +104,7 @@ function ProjectDetail({ project, onChanged, onDeleted }: { project: ProjectSumm
       ? <div className="source-list" aria-label="Sources">{sources.map((source) => {
           const type = sourceTypes[source.sourceType];
           return <button key={source.id} className="note-card source-card" onClick={() => setViewing(source)}>
-            <div className="note-card-title"><type.icon size={13}/>{source.title}</div>
+            <div className="note-card-title wrap-title"><type.icon size={13}/><span>{source.title}</span></div>
             <footer><span className="type-pill">{type.label}</span>{source.version > 1 && <span className="type-pill">v{source.version}</span>}{source.domain && <span>{source.domain}</span>}<time dateTime={source.capturedAt}>{shortDate(source.capturedAt)}</time></footer>
           </button>;
         })}</div>

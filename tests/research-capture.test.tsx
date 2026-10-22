@@ -106,7 +106,8 @@ describe("Add to research dialog", () => {
     await projectsRepository.create("CRM selection");
     stubActivePage({ title: "Pricing", url: "https://example.com/pricing", selection: "Basic plan £10", text: "Whole pricing page", truncated: false });
     const openProject = vi.fn();
-    render(<AddToResearch request={{ kind: "page" }} removeTracking onClose={vi.fn()} onOpenProject={openProject}/>);
+    const added = vi.fn();
+    render(<AddToResearch request={{ kind: "page" }} removeTracking onClose={vi.fn()} onOpenProject={openProject} onAdded={added}/>);
 
     expect(await screen.findByLabelText("Text that will be stored")).toHaveTextContent("Basic plan £10");
     fireEvent.click(screen.getByRole("button", { name: /Full page/ }));
@@ -118,6 +119,8 @@ describe("Add to research dialog", () => {
     const [project] = await projectsRepository.list();
     expect((await sourcesRepository.listForProject(project.id))[0]).toMatchObject({ sourceType: "selection", snapshotText: "Basic plan £10" });
 
+    // Reported straight away so an open Projects view refreshes even without "Open project".
+    expect(added).toHaveBeenCalledWith(project.id);
     fireEvent.click(screen.getByRole("button", { name: "Open project" }));
     expect(openProject).toHaveBeenCalledWith(project.id);
   });
