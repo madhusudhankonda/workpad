@@ -38,6 +38,8 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
     return;
   }
   if (info.menuItemId === "save-selection" || info.menuItemId === "save-page-link") {
+    // Open the panel first: Chrome only allows sidePanel.open() synchronously within the click, not after an await.
+    if (tab?.windowId) chrome.sidePanel.open({ windowId: tab.windowId }).catch(console.error);
     chrome.storage.local
       .set({
         pendingCapture: {
@@ -47,9 +49,6 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
           title: limit(tab?.title ?? "Untitled page"),
           capturedAt: new Date().toISOString()
         }
-      })
-      .then(() => {
-        if (tab?.windowId) return chrome.sidePanel.open({ windowId: tab.windowId });
       })
       .catch(console.error);
   }
