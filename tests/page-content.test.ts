@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { buildEvidencePassages, evidenceSource, highlightPageEvidence, requestPageAccess } from "../src/services/pageContent";
+import { buildEvidencePassages, evidenceSource, highlightPageEvidence, readActiveSelection, requestPageAccess } from "../src/services/pageContent";
 
 describe("page access", () => {
   afterEach(() => vi.unstubAllGlobals());
@@ -41,5 +41,23 @@ describe("page access", () => {
     });
     await expect(highlightPageEvidence("Supporting sentence")).resolves.toBe(true);
     expect(executeScript).toHaveBeenCalledWith(expect.objectContaining({ target: { tabId: 7 }, args: ["Supporting sentence"] }));
+  });
+});
+
+describe("reading the current selection", () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it("returns the selected text and only the selection", async () => {
+    const executeScript = vi.fn().mockResolvedValue([{ result: "Quoted line" }]);
+    vi.stubGlobal("chrome", { tabs: { query: vi.fn().mockResolvedValue([{ id: 4, url: "https://example.com/a" }]) }, scripting: { executeScript } });
+    await expect(readActiveSelection()).resolves.toBe("Quoted line");
+    expect(executeScript).toHaveBeenCalledWith(expect.objectContaining({ target: { tabId: 4 }, args: [10_000] }));
+  });
+
+  it("falls back to an empty note when the page cannot be read", async () => {
+    vi.stubGlobal("chrome", { tabs: { query: vi.fn().mockResolvedValue([{ id: 4, url: "https://example.com/a" }]) }, scripting: { executeScript: vi.fn().mockRejectedValue(new Error("Cannot access contents of the page")) } });
+    await expect(readActiveSelection()).resolves.toBe("");
+    vi.stubGlobal("chrome", { tabs: { query: vi.fn().mockResolvedValue([{ id: 4, url: "chrome://settings" }]) }, scripting: { executeScript: vi.fn() } });
+    await expect(readActiveSelection()).resolves.toBe("");
   });
 });

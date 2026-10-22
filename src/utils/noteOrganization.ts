@@ -37,3 +37,9 @@ export function groupNotesByWebsiteAndDate(items: Note[]): NoteWebsiteGroup[] {
     dates: [...dates].map(([key, notes]) => ({ key, label: formattedDay(new Date(`${key}T12:00:00`)), notes }))
   }));
 }
+
+/** Note body that quotes captured page text, every line as a Markdown quote, followed by where and when it came from. */
+export function quotedSelection(selection: string, url: string, capturedAt: Date = new Date()): string {
+  const quote = selection.trim().split(/\r?\n/).map((line) => `> ${line}`.trimEnd()).join("\n");
+  return `${quote}\n\nSource: ${url}\nCaptured: ${capturedAt.toLocaleString()}`;
+}

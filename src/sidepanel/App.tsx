@@ -7,7 +7,7 @@ import type { NewNote, Note, NoteType, PageContext, Settings } from "../types";
 import { createBackup, downloadText, MAX_BACKUP_BYTES, noteMarkdown, validateBackup } from "../utils/backup";
 import { describeBackup, importBackup } from "../services/backupImport";
 import { extractDomain, normalizeContextUrl, normalizeUrl } from "../utils/url";
-import { defaultNoteTitle, displayNoteTitle, groupNotesByWebsiteAndDate, isNoteForSiteToday } from "../utils/noteOrganization";
+import { defaultNoteTitle, displayNoteTitle, groupNotesByWebsiteAndDate, isNoteForSiteToday, quotedSelection } from "../utils/noteOrganization";
 import { shareText, socialComposerUrl, socialDraft, socialDraftFromAI, type SocialPlatform } from "../utils/socialShare";
 import { AIWorkspace, type SavedAIResult } from "./AIWorkspace";
 import { ProjectsPanel } from "./ProjectsPanel";
@@ -17,7 +17,7 @@ import { canUseCloudSync, disableNoteSync, enableNoteSync, getNoteSyncStatus, sy
 import { isFreeSyncTestingEnabled } from "../services/noteSync";
 import { PRO_PRICE } from "../config/pricing";
 import { capturedEmailContent, emailProviderForUrl, emailProviderLabel, extractActiveEmail, type EmailProvider } from "../services/emailCapture";
-import { PageAccessError, requestPageAccess } from "../services/pageContent";
+import { PageAccessError, readActiveSelection, requestPageAccess } from "../services/pageContent";
 import { clearNoteReminder, reminderFromTags, scheduleNoteReminder, withReminderTag } from "../services/reminders";
 
 type NoteSection = "page" | "all";
@@ -77,8 +77,7 @@ export function App() {
         const { pendingCapture, pendingCommand } = await chrome.storage.local.get(["pendingCapture", "pendingCommand"]);
         if (pendingCapture) {
           const capture = pendingCapture as PendingCapture;
-          const source = `\n\nSource: ${capture.url}\nCaptured: ${new Date(capture.capturedAt).toLocaleString()}`;
-          const content = capture.selection ? `> ${capture.selection}${source}` : `Source: ${capture.url}`;
+          const content = capture.selection ? quotedSelection(capture.selection, capture.url, new Date(capture.capturedAt)) : `Source: ${capture.url}`;
           const note = await notesRepository.create({ ...blank("page"), title: capture.selection ? `Capture: ${capture.title}` : capture.title, content, pageUrl: capture.url, normalizedPageUrl: normalizeUrl(capture.url, stored.removeTrackingParameters), pageTitle: capture.title, domain: extractDomain(capture.url) });
           setSelectedId(note.id); await chrome.storage.local.remove("pendingCapture"); await refresh();
         }
@@ -121,12 +120,18 @@ export function App() {
 
   const createNote = async (type: NoteType) => {
     if ((type === "page" || type === "domain") && (!context || context.restricted)) return;
+    // Selected text on the page (read only now, on this click) starts the note as a quote.
+    const selection = type === "page" ? await readActiveSelection() : "";
+    const content = selection ? quotedSelection(selection, context!.url) : "";
     if (type === "page") {
       const reusable = notes.find((note) => note.type === "page" && note.normalizedPageUrl === context!.normalizedUrl && !note.content.trim() && (!note.title.trim() || note.title === defaultNoteTitle("page", context)));
-      if (reusable) { setSelectedId(reusable.id); setSection("page"); return; }
+      if (reusable) {
+        if (content) await notesRepository.update(reusable.id, { content });
+        setSelectedId(reusable.id); setSection("page"); if (content) await refresh(); return;
+      }
     }
     const note = await notesRepository.create({
-      ...blank(type), title: defaultNoteTitle(type, context),
+      ...blank(type), title: defaultNoteTitle(type, context), content,
       ...(type === "page" ? { pageUrl: context!.url, normalizedPageUrl: context!.normalizedUrl, domain: context!.domain, pageTitle: context!.title } : {}),
       ...(type === "domain" ? { domain: context!.domain, pageTitle: context!.title } : {})
     });
@@ -274,7 +279,7 @@ export function GroupedNotes({ notes, selectedId, select }: { notes: Note[]; sel
 export function Editor({ note, edit, status, onExtractActions, onDraftReply, onShare, onAddToResearch, remove, duplicate }: { note: Note; edit: (changes: Partial<Note>) => void; status: string; onExtractActions?: () => void; onDraftReply?: () => void; onShare?: () => void; onAddToResearch?: () => void; remove: () => void; duplicate: () => void }) {
   const [tagValue, setTagValue] = useState("");
   const addTag = () => { const tag = tagValue.trim().replace(/^#/, ""); if (tag && !note.tags.includes(tag)) edit({ tags: [...note.tags, tag] }); setTagValue(""); };
-  return <div className="editor"><div className="editor-toolbar"><span className="context-pill">{note.tags.includes("email") ? "Email" : noteScopeLabel(note.type)}{note.domain ? ` · ${note.domain}` : ""}</span><span className={`save-status ${status}`}>{status === "saving" ? "Saving…" : status === "failed" ? "Save failed" : <><Check size={13}/> Saved</>}</span><button title="Favourite" onClick={() => edit({ isFavourite: !note.isFavourite })}><Heart size={17} fill={note.isFavourite ? "currentColor" : "none"}/></button><button title="Duplicate" onClick={duplicate}><Copy size={16}/></button>{onAddToResearch && <button title="Add to research project" aria-label="Add note to research" onClick={onAddToResearch}><FolderPlus size={16}/></button>}{onShare && <button title="Create social post" aria-label="Create social post" onClick={onShare}><Share2 size={16}/></button>}<button title="Export markdown" onClick={() => downloadText(`${note.title || "workpad-note"}.md`, noteMarkdown(note), "text/markdown")}><Download size={16}/></button><button title="Delete" className="danger" onClick={remove}><Trash2 size={16}/></button></div><input className="title-input" placeholder={displayNoteTitle(note)} value={note.title} onChange={(e) => edit({ title: e.target.value })}/>{note.tags.includes("email") && <EmailNoteActions note={note} edit={edit} onExtractActions={onExtractActions} onDraftReply={onDraftReply}/>} <textarea className="content-input" aria-label="Note content" placeholder="Start writing…" value={note.content} onChange={(e) => edit({ content: e.target.value })}/><div className="tag-editor">{note.tags.filter((tag) => !tag.startsWith("reminder:")).map((tag) => <button key={tag} onClick={() => edit({ tags: note.tags.filter((item) => item !== tag) })}>#{tag} <X size={12}/></button>)}<input value={tagValue} placeholder="Add tag" onChange={(e) => setTagValue(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addTag(); } }}/></div></div>;
+  return <div className="editor"><div className="editor-toolbar"><span className="context-pill">{note.tags.includes("email") ? "Email" : noteScopeLabel(note.type)}{note.domain ? ` · ${note.domain}` : ""}</span><span className={`save-status ${status}`}>{status === "saving" ? "Saving…" : status === "failed" ? "Save failed" : <><Check size={13}/> Saved</>}</span><button title="Favourite" onClick={() => edit({ isFavourite: !note.isFavourite })}><Heart size={17} fill={note.isFavourite ? "currentColor" : "none"}/></button><button title="Duplicate" onClick={duplicate}><Copy size={16}/></button>{onAddToResearch && <button title="Add to research project" aria-label="Add note to research" onClick={onAddToResearch}><FolderPlus size={16}/></button>}{onShare && <button title="Create social post" aria-label="Create social post" onClick={onShare}><Share2 size={16}/></button>}<button title="Export markdown" onClick={() => downloadText(`${note.title || "workpad-note"}.md`, noteMarkdown(note), "text/markdown")}><Download size={16}/></button><button title="Delete" className="danger" onClick={remove}><Trash2 size={16}/></button></div><input className="title-input" placeholder={displayNoteTitle(note)} value={note.title} onChange={(e) => edit({ title: e.target.value })}/>{note.tags.includes("email") && <EmailNoteActions note={note} edit={edit} onExtractActions={onExtractActions} onDraftReply={onDraftReply}/>} <textarea className="content-input" aria-label="Note content" placeholder={note.type === "page" ? "Write your thoughts, or select text on the page first to quote it." : "Start writing…"} value={note.content} onChange={(e) => edit({ content: e.target.value })}/><div className="tag-editor">{note.tags.filter((tag) => !tag.startsWith("reminder:")).map((tag) => <button key={tag} onClick={() => edit({ tags: note.tags.filter((item) => item !== tag) })}>#{tag} <X size={12}/></button>)}<input value={tagValue} placeholder="Add tag" onChange={(e) => setTagValue(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addTag(); } }}/></div></div>;
 }
 
 function defaultReminderInput(): string {
