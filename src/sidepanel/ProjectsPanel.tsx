@@ -55,7 +55,7 @@ export function ProjectPicker({ projects, selectedId, onSelect, onCreate, create
         </form>
       : <button className="project-new" onClick={() => setCreating(true)}><Plus size={14}/>New research project</button>}
     {projects.map((project) => <button key={project.id} className={`note-card${selectedId === project.id ? " selected" : ""}`} aria-current={selectedId === project.id ? "true" : undefined} onClick={() => onSelect(project.id)}>
-      <div className="note-card-title"><FolderOpen size={13}/>{project.name}</div>
+      <div className="note-card-title wrap-title"><FolderOpen size={13}/><span>{project.name}</span></div>
       {project.description && <p>{project.description}</p>}
       <footer><span>{sourceLabel(project.sourceCount)}</span><time dateTime={project.lastActivityAt}>{shortDate(project.lastActivityAt)}</time></footer>
     </button>)}
@@ -69,6 +69,7 @@ function ProjectDetail({ project, onChanged, onDeleted }: { project: ProjectSumm
   const [sources, setSources] = useState<ResearchSource[]>();
   const [viewing, setViewing] = useState<ResearchSource>();
   const [asking, setAsking] = useState(false);
+  const [question, setQuestion] = useState("");
 
   useEffect(() => { void sourcesRepository.listForProject(project.id).then(setSources); }, [project.id]);
   const removeSource = async (source: ResearchSource) => {
@@ -97,20 +98,23 @@ function ProjectDetail({ project, onChanged, onDeleted }: { project: ProjectSumm
   return <div className="editor project-detail">
     <div className="editor-toolbar"><span className="project-meta">{sourceLabel(project.sourceCount)} · Updated {shortDate(project.lastActivityAt)}</span><button className="danger" aria-label="Delete project" title="Delete project" onClick={() => void remove()}><Trash2 size={16}/></button></div>
     <input className="title-input" aria-label="Project name" maxLength={MAX_PROJECT_NAME_LENGTH} value={name} onChange={(event) => setName(event.target.value)} onBlur={() => void save({ name })} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }}/>
-    <textarea className="project-description" aria-label="Project description" placeholder="What decision is this research for?" rows={3} maxLength={MAX_PROJECT_DESCRIPTION_LENGTH} value={description} onChange={(event) => setDescription(event.target.value)} onBlur={() => void save({ description })}/>
+    <label className="project-goal"><span>Goal</span><textarea className="project-description" aria-label="Project goal" placeholder="e.g. Choose a CRM for a 10-person sales team" rows={2} maxLength={MAX_PROJECT_DESCRIPTION_LENGTH} value={description} onChange={(event) => setDescription(event.target.value)} onBlur={() => void save({ description })}/></label>
     {error && <small className="project-error" role="alert">{error}</small>}
-    {sources && sources.length > 0 && <button className="ask-sources" onClick={() => setAsking(true)}><MessagesSquare size={14}/>Ask across sources</button>}
+    {sources && sources.length > 0 && <form className="ask-box" onSubmit={(event) => { event.preventDefault(); setAsking(true); }}>
+      <textarea aria-label="Question about these sources" placeholder="Ask a question about these sources…" rows={2} value={question} onChange={(event) => setQuestion(event.target.value)} onKeyDown={(event) => { if ((event.metaKey || event.ctrlKey) && event.key === "Enter") { event.preventDefault(); setAsking(true); } }}/>
+      <button type="submit" className="ask-sources"><MessagesSquare size={14}/>Ask across sources</button>
+    </form>}
     {sources && (sources.length
       ? <div className="source-list" aria-label="Sources">{sources.map((source) => {
           const type = sourceTypes[source.sourceType];
           return <button key={source.id} className="note-card source-card" onClick={() => setViewing(source)}>
-            <div className="note-card-title"><type.icon size={13}/>{source.title}</div>
+            <div className="note-card-title wrap-title"><type.icon size={13}/><span>{source.title}</span></div>
             <footer><span className="type-pill">{type.label}</span>{source.version > 1 && <span className="type-pill">v{source.version}</span>}{source.domain && <span>{source.domain}</span>}<time dateTime={source.capturedAt}>{shortDate(source.capturedAt)}</time></footer>
           </button>;
         })}</div>
       : <div className="empty-state project-sources-empty"><FolderOpen size={22}/><strong>No sources yet</strong><p>Use Research on a page, email or note to add it here.</p></div>)}
     {viewing && <SnapshotViewer source={viewing} onClose={() => setViewing(undefined)} onRemove={() => void removeSource(viewing)}/>}
-    {asking && sources && <ResearchQuestion project={project} sources={sources} onClose={() => setAsking(false)} onSaved={async () => { setSources(await sourcesRepository.listForProject(project.id)); await onChanged(); }}/>}
+    {asking && sources && <ResearchQuestion project={project} sources={sources} initialQuestion={question} onClose={() => setAsking(false)} onSaved={async () => { setSources(await sourcesRepository.listForProject(project.id)); await onChanged(); }}/>}
   </div>;
 }
 

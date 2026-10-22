@@ -106,7 +106,8 @@ describe("Add to research dialog", () => {
     await projectsRepository.create("CRM selection");
     stubActivePage({ title: "Pricing", url: "https://example.com/pricing", selection: "Basic plan £10", text: "Whole pricing page", truncated: false });
     const openProject = vi.fn();
-    render(<AddToResearch request={{ kind: "page" }} removeTracking onClose={vi.fn()} onOpenProject={openProject}/>);
+    const added = vi.fn();
+    render(<AddToResearch request={{ kind: "page" }} removeTracking onClose={vi.fn()} onOpenProject={openProject} onAdded={added}/>);
 
     expect(await screen.findByLabelText("Text that will be stored")).toHaveTextContent("Basic plan £10");
     fireEvent.click(screen.getByRole("button", { name: /Full page/ }));
@@ -118,8 +119,24 @@ describe("Add to research dialog", () => {
     const [project] = await projectsRepository.list();
     expect((await sourcesRepository.listForProject(project.id))[0]).toMatchObject({ sourceType: "selection", snapshotText: "Basic plan £10" });
 
+    // Reported straight away so an open Projects view refreshes even without "Open project".
+    expect(added).toHaveBeenCalledWith(project.id);
     fireEvent.click(screen.getByRole("button", { name: "Open project" }));
     expect(openProject).toHaveBeenCalledWith(project.id);
+  });
+
+  it("lists what is already in the chosen project and flags an earlier capture of the same page", async () => {
+    const project = await projectsRepository.create("CRM selection");
+    await sourcesRepository.addToProject(project.id, { ...pageDraft("Old pricing text"), title: "Pricing (old)" });
+    await sourcesRepository.addToProject(project.id, { sourceType: "selection", title: "Selection: Reviews", text: "Great support", truncated: false });
+    stubActivePage({ title: "Pricing", url: "https://example.com/pricing", selection: "", text: "New pricing text", truncated: false });
+    render(<AddToResearch request={{ kind: "page" }} removeTracking onClose={vi.fn()} onOpenProject={vi.fn()}/>);
+
+    const contents = await screen.findByLabelText("Sources already in this project");
+    expect(contents).toHaveTextContent("Already in CRM selection (2)");
+    expect(contents).toHaveTextContent("Pricing (old)");
+    expect(contents).toHaveTextContent("Selection: Reviews");
+    expect(screen.getByRole("note")).toHaveTextContent("adding it creates version 2");
   });
 
   it("creates a project from the dialog when none exist", async () => {

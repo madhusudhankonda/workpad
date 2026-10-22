@@ -7,6 +7,7 @@ import { sourcesRepository } from "../src/db/repositories/sourcesRepository";
 import { separateCitations, validateEvidenceCitations } from "../src/services/ai";
 import { buildProjectEvidence, describeBudget } from "../src/services/researchEvidence";
 import { ResearchQuestion } from "../src/sidepanel/ResearchQuestion";
+import { ProjectsPanel } from "../src/sidepanel/ProjectsPanel";
 import type { ResearchSource } from "../src/types";
 import { splitAtPassage } from "../src/utils/passages";
 
@@ -134,6 +135,21 @@ describe("Ask across sources workspace", () => {
     const saved = (await sourcesRepository.listForProject(project.id)).find((item) => item.sourceType === "ai_result");
     expect(saved?.title).toBe("Answer: Which is cheapest?");
     expect(saved?.snapshotText).toContain("Beta pricing: Beta Basic costs £9 per user per month.");
+  });
+
+  it("carries a question typed in the project into the workspace", async () => {
+    vi.stubGlobal("chrome", { storage: { local: { get: vi.fn().mockResolvedValue({}) }, session: { get: vi.fn().mockResolvedValue({}) } } });
+    const project = await projectsRepository.create("Cyberattacks");
+    await sourcesRepository.addToProject(project.id, { sourceType: "page", title: "BBC report", text: "Sites were taken down.", truncated: false });
+    render(<ProjectsPanel initialProjectId={project.id}/>);
+
+    expect(await screen.findByRole("textbox", { name: "Project goal" })).toHaveAttribute("placeholder", "e.g. Choose a CRM for a 10-person sales team");
+    fireEvent.change(await screen.findByRole("textbox", { name: "Question about these sources" }), { target: { value: "What does the BBC say?" } });
+    fireEvent.click(screen.getByRole("button", { name: "Ask across sources" }));
+
+    const workspace = await screen.findByRole("dialog", { name: "Ask across sources" });
+    expect(within(workspace).getByRole("textbox", { name: "Your question" })).toHaveValue("What does the BBC say?");
+    expect((await projectsRepository.getById(project.id))?.description).toBe("");
   });
 
   it("can deselect sources and disables asking with none selected", async () => {
