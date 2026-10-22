@@ -71,6 +71,8 @@ export interface ResearchSource {
   contentHash: string;
   version: number;
   previousVersionId?: string;
+  /** Same key = re-captures of one page, email or note. Absent for selections. */
+  versionKey?: string;
   capturedAt: string;
   createdAt: string;
   updatedAt: string;
