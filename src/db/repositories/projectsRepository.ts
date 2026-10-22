@@ -57,10 +57,11 @@ export const projectsRepository = {
     });
   },
 
-  /** Deletes the project and every source captured into it. */
+  /** Deletes the project and every source and brief in it. */
   async delete(id: string): Promise<void> {
-    await db.transaction("rw", db.projects, db.sources, async () => {
+    await db.transaction("rw", db.projects, db.sources, db.briefs, async () => {
       await db.sources.where("projectId").equals(id).delete();
+      await db.briefs.where("projectId").equals(id).delete();
       await db.projects.delete(id);
     });
   },

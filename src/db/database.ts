@@ -1,5 +1,5 @@
 import Dexie, { type EntityTable } from "dexie";
-import type { Note, NoteSyncRecord, ResearchProject, ResearchSource, Settings } from "../types";
+import type { DecisionBrief, Note, NoteSyncRecord, ResearchProject, ResearchSource, Settings } from "../types";
 
 export class WorkpadDatabase extends Dexie {
   notes!: EntityTable<Note, "id">;
@@ -7,6 +7,7 @@ export class WorkpadDatabase extends Dexie {
   noteSync!: EntityTable<NoteSyncRecord, "noteId">;
   projects!: EntityTable<ResearchProject, "id">;
   sources!: EntityTable<ResearchSource, "id">;
+  briefs!: EntityTable<DecisionBrief, "id">;
 
   constructor() {
     super("workpad");
@@ -26,6 +27,15 @@ export class WorkpadDatabase extends Dexie {
       noteSync: "noteId, userId, changedAt",
       projects: "id, updatedAt",
       sources: "id, projectId, [projectId+contentHash], updatedAt"
+    });
+    // Decision briefs (research phase 4). Additive.
+    this.version(4).stores({
+      notes: "id, type, normalizedPageUrl, domain, isFavourite, isArchived, updatedAt, *tags",
+      settings: "id",
+      noteSync: "noteId, userId, changedAt",
+      projects: "id, updatedAt",
+      sources: "id, projectId, [projectId+contentHash], updatedAt",
+      briefs: "id, projectId, updatedAt"
     });
   }
 }

@@ -78,6 +78,30 @@ export interface ResearchSource {
   updatedAt: string;
 }
 
+/** A source as it was labelled when a brief was generated, with the passages the brief cites. */
+export interface BriefEvidence {
+  label: string;
+  sourceId: string;
+  title: string;
+  url?: string;
+  capturedAt: string;
+  passages: EvidencePassage[];
+}
+
+export interface DecisionBrief {
+  id: string;
+  projectId: string;
+  title: string;
+  objective: string;
+  /** Editable Markdown. Citations use [S#:P#] labels from `evidence`. */
+  content: string;
+  evidence: BriefEvidence[];
+  truncated: boolean;
+  model?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface PageContext {
   url: string;
   normalizedUrl: string;
@@ -94,7 +118,7 @@ export interface WorkpadBackup {
   settings?: Settings;
 }
 
-export type AIAction = "summary" | "translate" | "actions" | "explain" | "custom" | "research_question";
+export type AIAction = "summary" | "translate" | "actions" | "explain" | "custom" | "research_question" | "decision_brief";
 
 export interface ExtractedPageContent {
   title: string;

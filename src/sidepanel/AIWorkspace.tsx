@@ -19,7 +19,8 @@ const actionTitles: Record<AIAction, string> = {
   actions: "Action points",
   explain: "Explanation",
   custom: "AI analysis",
-  research_question: "Research answer"
+  research_question: "Research answer",
+  decision_brief: "Decision brief"
 };
 
 function inlineMarkdown(text: string, passages: Map<string, EvidencePassage>, onCitation?: (passage: EvidencePassage) => void): ReactNode[] {
@@ -34,7 +35,9 @@ function inlineMarkdown(text: string, passages: Map<string, EvidencePassage>, on
       const passage = passages.get(token.slice(1, -1));
       output.push(passage && onCitation
         ? <button className="evidence-citation" key={`${index}-citation`} title="View supporting passage" onClick={() => onCitation(passage)}>{token}</button>
-        : token);
+        : onCitation
+          ? <span className="broken-citation" key={`${index}-broken`} title="This citation no longer matches a stored passage">{token}</span>
+          : token);
     } else if (token.startsWith("**")) output.push(<strong key={`${index}-strong`}>{token.slice(2, -2)}</strong>);
     else if (token.startsWith("`")) output.push(<code key={`${index}-code`}>{token.slice(1, -1)}</code>);
     else {
@@ -48,8 +51,11 @@ function inlineMarkdown(text: string, passages: Map<string, EvidencePassage>, on
 }
 
 function isMarkdownBlock(line: string): boolean {
-  return /^(#{1,3})\s+|^[-*]\s+|^\d+\.\s+|^>\s+|^---+$/.test(line.trim());
+  return /^(#{1,3})\s+|^[-*]\s+|^\d+\.\s+|^>\s+|^---+$|^\|/.test(line.trim());
 }
+
+const tableCells = (line: string) => line.trim().replace(/^\|/, "").replace(/\|$/, "").split("|").map((cell) => cell.trim());
+const isTableSeparator = (line?: string) => Boolean(line && /^\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?$/.test(line.trim()));
 
 export function MarkdownResult({ text, evidence = [], onCitation }: { text: string; evidence?: EvidencePassage[]; onCitation?: (passage: EvidencePassage) => void }) {
   const lines = text.split("\n");
@@ -79,6 +85,14 @@ export function MarkdownResult({ text, evidence = [], onCitation }: { text: stri
         items.push(<li key={index}>{inlineMarkdown(lines[index].trim().replace(/^\d+\.\s+/, ""), passages, onCitation)}</li>); index += 1;
       }
       blocks.push(<ol key={`ol-${index}`}>{items}</ol>); continue;
+    }
+    if (line.startsWith("|") && isTableSeparator(lines[index + 1])) {
+      const header = tableCells(line);
+      const rows: string[][] = [];
+      index += 2;
+      while (index < lines.length && lines[index].trim().startsWith("|")) { rows.push(tableCells(lines[index])); index += 1; }
+      blocks.push(<div className="md-table" key={`table-${index}`}><table><thead><tr>{header.map((cell, cellIndex) => <th key={cellIndex}>{inlineMarkdown(cell, passages, onCitation)}</th>)}</tr></thead><tbody>{rows.map((row, rowIndex) => <tr key={rowIndex}>{header.map((_, cellIndex) => <td key={cellIndex}>{inlineMarkdown(row[cellIndex] ?? "", passages, onCitation)}</td>)}</tr>)}</tbody></table></div>);
+      continue;
     }
     if (/^>\s+/.test(line)) { blocks.push(<blockquote key={index}>{inlineMarkdown(line.replace(/^>\s+/, ""), passages, onCitation)}</blockquote>); index += 1; continue; }
     if (/^---+$/.test(line)) { blocks.push(<hr key={index}/>); index += 1; continue; }
