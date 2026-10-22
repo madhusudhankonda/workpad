@@ -8,6 +8,7 @@ function chromeStub(initial: Record<string, unknown> = {}) {
   const store: Record<string, unknown> = { ...initial };
   const storageListeners: Listener[] = [];
   const menuListeners: Listener[] = [];
+  const commandListeners: Listener[] = [];
   const order: string[] = [];
   const event = () => ({ addListener: vi.fn(), removeListener: vi.fn() });
   const chrome = {
@@ -29,16 +30,16 @@ function chromeStub(initial: Record<string, unknown> = {}) {
       onChanged: { addListener: (listener: Listener) => storageListeners.push(listener), removeListener: vi.fn() }
     },
     tabs: { query: vi.fn(async () => [{ id: 1, url: "https://example.com/article", title: "Article" }]), onActivated: event(), onUpdated: event(), create: vi.fn() },
-    windows: { onFocusChanged: event(), WINDOW_ID_NONE: -1 },
+    windows: { onFocusChanged: event(), WINDOW_ID_NONE: -1, getLastFocused: vi.fn(async () => ({ id: 99 })) },
     runtime: { onInstalled: event(), onMessage: event(), sendMessage: vi.fn(), getManifest: () => ({}), id: "test" },
     sidePanel: { setPanelBehavior: vi.fn(async () => undefined), open: vi.fn(async () => { order.push("sidePanel.open"); }) },
     contextMenus: { onClicked: { addListener: (listener: Listener) => menuListeners.push(listener) }, removeAll: vi.fn(), create: vi.fn() },
-    commands: { onCommand: event() },
+    commands: { onCommand: { addListener: (listener: Listener) => commandListeners.push(listener) } },
     alarms: { onAlarm: event(), create: vi.fn(), clear: vi.fn() },
     notifications: { onClicked: event(), create: vi.fn(), clear: vi.fn() },
     scripting: { executeScript: vi.fn(async () => [{ result: "" }]) }
   };
-  return { chrome, store, menuListeners, order };
+  return { chrome, store, menuListeners, commandListeners, order };
 }
 
 describe("right-click capture", () => {
@@ -54,6 +55,18 @@ describe("right-click capture", () => {
     expect(stub.chrome.sidePanel.open).toHaveBeenCalledWith({ windowId: 7 });
     await waitFor(() => expect(stub.order).toEqual(["sidePanel.open", "storage.set"]));
     expect(stub.store.pendingCapture).toMatchObject({ kind: "save-selection", selection: "Quoted line", url: "https://example.com/a" });
+  });
+
+  it("opens the side panel synchronously from the keyboard shortcut", async () => {
+    const stub = chromeStub();
+    vi.stubGlobal("chrome", stub.chrome);
+    // @ts-expect-error -- the background script has no exports; importing it registers its listeners.
+    await import("../src/background/index");
+    stub.commandListeners[0]("open-workpad", { windowId: 5 });
+    expect(stub.chrome.sidePanel.open).toHaveBeenCalledWith({ windowId: 5 });
+    expect(stub.chrome.windows.getLastFocused).not.toHaveBeenCalled();
+    stub.commandListeners[0]("new-note", { windowId: 5 });
+    await waitFor(() => expect(stub.store.pendingCommand).toBe("new-note"));
   });
 
   it("turns a capture into a note while the panel is already open", async () => {

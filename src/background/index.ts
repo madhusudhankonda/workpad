@@ -54,11 +54,13 @@ chrome.contextMenus.onClicked.addListener((info, tab) => {
   }
 });
 
-chrome.commands.onCommand.addListener((command) => {
-  if (command === "open-workpad") chrome.windows.getLastFocused().then((window) => {
-    if (window.id) chrome.sidePanel.open({ windowId: window.id }).catch(console.error);
-  });
-  else chrome.storage.local.set({ pendingCommand: command }).catch(console.error);
+chrome.commands.onCommand.addListener((command, tab) => {
+  // sidePanel.open() must run synchronously within the shortcut, so use the tab Chrome passes instead of awaiting a window lookup.
+  if (command === "open-workpad") {
+    if (tab?.windowId) chrome.sidePanel.open({ windowId: tab.windowId }).catch(console.error);
+    return;
+  }
+  chrome.storage.local.set({ pendingCommand: command }).catch(console.error);
 });
 
 chrome.runtime.onMessage.addListener((message: { type?: string; reminder?: StoredReminder; noteId?: string }, _sender, sendResponse) => {
@@ -110,13 +112,8 @@ chrome.notifications.onClicked.addListener((notificationId) => {
   void chrome.storage.local.get(REMINDER_STORAGE_KEY).then(async (stored) => {
     const reminders = (stored[REMINDER_STORAGE_KEY] ?? {}) as Record<string, StoredReminder>;
     const reminder = reminders[noteId];
-    if (reminder?.pageUrl) {
-      const tab = await chrome.tabs.create({ url: reminder.pageUrl });
-      if (tab.windowId) await chrome.sidePanel.open({ windowId: tab.windowId });
-    } else {
-      const window = await chrome.windows.getLastFocused();
-      if (window.id) await chrome.sidePanel.open({ windowId: window.id });
-    }
+    // Opening the side panel here would follow an await, which Chrome rejects; open the reminder's page instead.
+    if (reminder?.pageUrl) await chrome.tabs.create({ url: reminder.pageUrl });
     await chrome.notifications.clear(notificationId);
   }).catch(console.error);
 });
