@@ -150,3 +150,20 @@ export async function extractActivePageContent(maxCharacters = 40_000): Promise<
     throw error;
   }
 }
+
+/** Text currently selected in the active tab, or "" when there is none or the page cannot be read. Reads nothing else. */
+export async function readActiveSelection(maxCharacters = 10_000): Promise<string> {
+  if (!globalThis.chrome?.tabs || !globalThis.chrome?.scripting) return "";
+  try {
+    const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+    if (!tab?.id || isRestrictedUrl(tab.url ?? "")) return "";
+    const [injection] = await chrome.scripting.executeScript({
+      target: { tabId: tab.id },
+      args: [maxCharacters],
+      func: (limit: number) => (window.getSelection()?.toString() ?? "").replace(/\u00a0/g, " ").trim().slice(0, limit)
+    });
+    return typeof injection?.result === "string" ? injection.result : "";
+  } catch {
+    return "";
+  }
+}

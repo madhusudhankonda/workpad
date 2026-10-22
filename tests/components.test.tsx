@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { ContextBanner, Onboarding, Editor, EmptyState, GroupedNotes, NoteCard, SocialShareModal } from "../src/sidepanel/App";
-import { defaultNoteTitle, groupNotesByWebsiteAndDate, isNoteForSiteToday } from "../src/utils/noteOrganization";
+import { defaultNoteTitle, groupNotesByWebsiteAndDate, isNoteForSiteToday, quotedSelection } from "../src/utils/noteOrganization";
 import type { Note } from "../src/types";
 
 const note: Note = { id: "1", title: "Meeting notes", content: "Discussed launch", type: "page", pageUrl: "https://example.com", normalizedPageUrl: "https://example.com", domain: "example.com", tags: ["launch"], isFavourite: false, isArchived: false, createdAt: "2026-01-01", updatedAt: "2026-01-01" };
@@ -61,6 +61,16 @@ describe("side panel components", () => {
   it("does not repeat Ask this page inside a new note", () => {
     render(<Editor note={{ ...note, title: "", content: "" }} edit={vi.fn()} status="saved" remove={vi.fn()} duplicate={vi.fn()} />);
     expect(screen.queryByRole("button", { name: /Ask this/ })).not.toBeInTheDocument();
+  });
+  it("quotes every line of a selection and records its source", () => {
+    const captured = new Date("2026-10-22T09:30:00");
+    expect(quotedSelection("  First line\nSecond line\n\nThird  ", "https://example.com/a", captured)).toBe(`> First line\n> Second line\n>\n> Third\n\nSource: https://example.com/a\nCaptured: ${captured.toLocaleString()}`);
+  });
+  it("hints at quoting a selection in empty page notes", () => {
+    const { rerender } = render(<Editor note={{ ...note, content: "" }} edit={vi.fn()} status="saved" remove={vi.fn()} duplicate={vi.fn()} />);
+    expect(screen.getByRole("textbox", { name: "Note content" })).toHaveAttribute("placeholder", "Write your thoughts, or select text on the page first to quote it.");
+    rerender(<Editor note={{ ...note, type: "standalone", content: "" }} edit={vi.fn()} status="saved" remove={vi.fn()} duplicate={vi.fn()} />);
+    expect(screen.getByRole("textbox", { name: "Note content" })).toHaveAttribute("placeholder", "Start writing…");
   });
   it("uses the page headline as a default note title", () => {
     expect(defaultNoteTitle("page", { url: "https://example.com", normalizedUrl: "https://example.com", domain: "example.com", title: "A useful headline", restricted: false })).toBe("A useful headline");
