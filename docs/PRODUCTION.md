@@ -84,7 +84,7 @@ WORKPAD_AI_ENABLED    # optional; set to false to pause AI immediately
 How it works:
 
 - The function verifies the user's Supabase session and chooses the model, instructions, output limit and reasoning effort itself. Client-supplied model or instruction fields are ignored.
-- Answers are capped at 6,000 output tokens, including the model's reasoning. When OpenAI stops at the cap, the partial answer is returned marked as cut short and the user sees a warning. If no answer text came back at all, the reservation is released and nothing is charged.
+- Answers are capped at 6,000 output tokens (decision briefs: 12,000), including the model's reasoning. When OpenAI stops at the cap, the partial answer is returned marked as cut short and the user sees a warning. If no answer text came back at all, the reservation is released and nothing is charged.
 - Usage is measured in credits. One credit is 10,000 weighted tokens, with output tokens weighted four times. Every action costs at least one credit.
 - Before calling OpenAI, `reserve_ai_credits` reserves the worst-case cost under a per-user lock and enforces the monthly allowance, a per-minute request limit and a concurrent-request limit. `settle_ai_credits` then charges the real token usage, or releases the reservation if the request failed. Reservations expire after three minutes if the function crashes.
 - Monthly allowances, source-size limits and rate limits live in the `ai_plan_limits` table. The seeded values (free: 30 credits, 40,000 characters; Pro: 600 credits, 80,000 characters) are placeholders. Measure real cost per action in staging and update the table before launch; no deploy is needed.

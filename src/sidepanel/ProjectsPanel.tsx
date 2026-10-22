@@ -2,7 +2,9 @@ import { useEffect, useRef, useState } from "react";
 import { ExternalLink, FileText, FolderOpen, FolderPlus, Mail, MessagesSquare, NotebookPen, Plus, Sparkles, TextSelect, Trash2, X } from "lucide-react";
 import { MAX_PROJECT_DESCRIPTION_LENGTH, MAX_PROJECT_NAME_LENGTH, projectsRepository, type ProjectSummary } from "../db/repositories/projectsRepository";
 import { sourcesRepository } from "../db/repositories/sourcesRepository";
-import type { ResearchSource, ResearchSourceType } from "../types";
+import { briefsRepository } from "../db/repositories/briefsRepository";
+import { BriefWorkspace } from "./BriefWorkspace";
+import type { DecisionBrief, ResearchSource, ResearchSourceType } from "../types";
 import { ResearchQuestion } from "./ResearchQuestion";
 import { splitAtPassage } from "../utils/passages";
 
@@ -70,8 +72,13 @@ function ProjectDetail({ project, onChanged, onDeleted }: { project: ProjectSumm
   const [viewing, setViewing] = useState<ResearchSource>();
   const [asking, setAsking] = useState(false);
   const [question, setQuestion] = useState("");
+  const [briefs, setBriefs] = useState<DecisionBrief[]>([]);
+  const [openBrief, setOpenBrief] = useState<DecisionBrief | "new">();
 
-  useEffect(() => { void sourcesRepository.listForProject(project.id).then(setSources); }, [project.id]);
+  useEffect(() => {
+    void sourcesRepository.listForProject(project.id).then(setSources);
+    void briefsRepository.listForProject(project.id).then(setBriefs);
+  }, [project.id]);
   const removeSource = async (source: ResearchSource) => {
     if (!confirm(`Remove “${source.title}” from ${project.name}? The original page, email or note is not affected.`)) return;
     await sourcesRepository.remove(source.id);
@@ -104,6 +111,10 @@ function ProjectDetail({ project, onChanged, onDeleted }: { project: ProjectSumm
       <textarea aria-label="Question about these sources" placeholder="Ask a question about these sources…" rows={2} value={question} onChange={(event) => setQuestion(event.target.value)} onKeyDown={(event) => { if ((event.metaKey || event.ctrlKey) && event.key === "Enter") { event.preventDefault(); setAsking(true); } }}/>
       <button type="submit" className="ask-sources"><MessagesSquare size={14}/>Ask across sources</button>
     </form>}
+    {sources && sources.length > 0 && <section className="brief-section" aria-label="Decision briefs">
+      <button className="brief-create" onClick={() => setOpenBrief("new")}><FileText size={14}/>Create decision brief</button>
+      {briefs.map((brief) => <button key={brief.id} className="note-card brief-card" onClick={() => setOpenBrief(brief)}><div className="note-card-title wrap-title"><FileText size={13}/><span>{brief.title}</span></div><footer><span className="type-pill">Brief</span><time dateTime={brief.updatedAt}>{shortDate(brief.updatedAt)}</time></footer></button>)}
+    </section>}
     {sources && (sources.length
       ? <div className="source-list" aria-label="Sources">{sources.map((source) => {
           const type = sourceTypes[source.sourceType];
@@ -114,6 +125,7 @@ function ProjectDetail({ project, onChanged, onDeleted }: { project: ProjectSumm
         })}</div>
       : <div className="empty-state project-sources-empty"><FolderOpen size={22}/><strong>No sources yet</strong><p>Use Research on a page, email or note to add it here.</p></div>)}
     {viewing && <SnapshotViewer source={viewing} onClose={() => setViewing(undefined)} onRemove={() => void removeSource(viewing)}/>}
+    {openBrief && sources && <BriefWorkspace project={project} sources={sources} brief={openBrief === "new" ? undefined : openBrief} onClose={() => setOpenBrief(undefined)} onChanged={async () => { setBriefs(await briefsRepository.listForProject(project.id)); await onChanged(); }}/>}
     {asking && sources && <ResearchQuestion project={project} sources={sources} initialQuestion={question} onClose={() => setAsking(false)} onSaved={async () => { setSources(await sourcesRepository.listForProject(project.id)); await onChanged(); }}/>}
   </div>;
 }

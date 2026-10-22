@@ -1,5 +1,5 @@
 import { adminRpc, authenticatedUser, json, preflight, requiredEnv } from "../_shared/http.ts";
-import { buildInput, buildInstructions, creditsFor, MAX_OUTPUT_TOKENS, parseProxyRequest, readIncomplete, readResponseText, readUsage, RequestError, reservationCredits } from "../_shared/ai.ts";
+import { buildInput, buildInstructions, creditsFor, outputLimitFor, parseProxyRequest, readIncomplete, readResponseText, readUsage, RequestError, reservationCredits } from "../_shared/ai.ts";
 
 const DEFAULT_MODEL = "gpt-5.6-luna";
 const REQUEST_TIMEOUT_MS = 55_000;
@@ -73,7 +73,8 @@ Deno.serve(async (request: Request) => {
     const parsed = parseProxyRequest(payload, MAX_BODY_BYTES);
     const instructions = buildInstructions(parsed);
     const input = buildInput(parsed);
-    const requested = reservationCredits(instructions, input);
+    const outputLimit = outputLimitFor(parsed.action);
+    const requested = reservationCredits(instructions, input, outputLimit);
 
     try {
       [reservation] = await adminRpc<Reservation[]>("reserve_ai_credits", { target_user: user.id, requested_credits: requested });
@@ -91,7 +92,7 @@ Deno.serve(async (request: Request) => {
       instructions,
       input,
       reasoning: { effort: "low" },
-      max_output_tokens: MAX_OUTPUT_TOKENS,
+      max_output_tokens: outputLimit,
       store: false,
       safety_identifier: await safetyIdentifier(user.id)
     }), request.signal);
