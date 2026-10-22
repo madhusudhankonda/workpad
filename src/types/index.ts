@@ -47,6 +47,35 @@ export interface NoteSyncRecord {
   lastSyncedAt?: string;
 }
 
+export interface ResearchProject {
+  id: string;
+  name: string;
+  description: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type ResearchSourceType = "page" | "selection" | "email" | "note" | "ai_result";
+
+/** A frozen, dated snapshot of evidence captured into one project. Re-capturing adds a new version. */
+export interface ResearchSource {
+  id: string;
+  projectId: string;
+  sourceType: ResearchSourceType;
+  title: string;
+  url?: string;
+  normalizedUrl?: string;
+  domain?: string;
+  snapshotText: string;
+  snapshotTruncated: boolean;
+  contentHash: string;
+  version: number;
+  previousVersionId?: string;
+  capturedAt: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface PageContext {
   url: string;
   normalizedUrl: string;

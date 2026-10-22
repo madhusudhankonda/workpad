@@ -9,6 +9,7 @@ import { extractDomain, normalizeContextUrl, normalizeUrl } from "../utils/url";
 import { defaultNoteTitle, displayNoteTitle, groupNotesByWebsiteAndDate, isNoteForSiteToday } from "../utils/noteOrganization";
 import { shareText, socialComposerUrl, socialDraft, socialDraftFromAI, type SocialPlatform } from "../utils/socialShare";
 import { AIWorkspace, type SavedAIResult } from "./AIWorkspace";
+import { ProjectsPanel } from "./ProjectsPanel";
 import { createCheckout, createCustomerPortal, currentSession, deleteAccount, getEntitlements, isAccountConfigured, signInWithGoogle, signOut, type AccountSession, type Entitlements } from "../services/account";
 import { canUseCloudSync, disableNoteSync, enableNoteSync, getNoteSyncStatus, syncCurrentAccountNotes, syncNotes, type NoteSyncStatus } from "../services/noteSync";
 import { isFreeSyncTestingEnabled } from "../services/noteSync";
@@ -17,9 +18,10 @@ import { capturedEmailContent, emailProviderForUrl, emailProviderLabel, extractA
 import { PageAccessError, requestPageAccess } from "../services/pageContent";
 import { clearNoteReminder, reminderFromTags, scheduleNoteReminder, withReminderTag } from "../services/reminders";
 
-type Section = "page" | "all";
+type NoteSection = "page" | "all";
+type Section = NoteSection | "projects";
 type PendingCapture = { kind: string; selection: string; url: string; title: string; capturedAt: string };
-const labels: Record<Section, string> = { page: "This Site Today", all: "All Notes" };
+const labels: Record<NoteSection, string> = { page: "This Site Today", all: "All Notes" };
 const blank = (type: NoteType = "standalone"): NewNote => ({ title: "", content: "", type, tags: [], isFavourite: false, isArchived: false });
 const noteScopeLabel = (type: NoteType) => type === "page" ? "This page" : type === "domain" ? "Domain" : type === "scratchpad" ? "Scratchpad" : "Note";
 
@@ -45,6 +47,7 @@ export function App() {
   const [onboarding, setOnboarding] = useState(0);
   const [emailCaptureBusy, setEmailCaptureBusy] = useState(false);
   const [emailCaptureStatus, setEmailCaptureStatus] = useState("");
+  const [newProjectRequest, setNewProjectRequest] = useState(0);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const contextRequest = useRef(0);
   const contextUrl = useRef<string | undefined>(undefined);
@@ -141,7 +144,10 @@ export function App() {
     });
     setSelectedId(note.id); setSection(type === "page" ? "page" : "all"); await refresh();
   };
-  function createForCurrentView() { return createNote(section === "page" && context && !context.restricted ? "page" : "standalone"); }
+  function createForCurrentView() {
+    if (section === "projects") { setNewProjectRequest((count) => count + 1); return Promise.resolve(); }
+    return createNote(section === "page" && context && !context.restricted ? "page" : "standalone");
+  }
   const persist = async (note: Note) => {
     if (saveTimer.current) clearTimeout(saveTimer.current);
     setSaveStatus("saving");
@@ -216,9 +222,10 @@ export function App() {
 
   if (!settings.onboardingCompleted) return <Onboarding step={onboarding} setStep={setOnboarding} done={() => void completeOnboarding()} />;
   return <main className="app-shell">
-    <header className="topbar"><div className="brand"><span className="brand-mark"><PanelRight size={16}/></span>Workpad</div><div className="top-actions"><button className="primary-create" aria-label={section === "page" ? "New note for this page" : "New note"} title={section === "page" ? "New note for this page" : "New note"} onClick={() => void createForCurrentView()}><Plus size={18}/></button><button className="ai-entry-button" aria-label="Ask this page" title="Summarize, translate, explain, or ask about this page" onClick={() => setShowAI(true)}><Sparkles size={16}/><span>Ask this page</span></button><button aria-label="Settings" onClick={() => setShowSettings(true)}><SettingsIcon size={17}/></button></div></header>
+    <header className="topbar"><div className="brand"><span className="brand-mark"><PanelRight size={16}/></span>Workpad</div><div className="top-actions"><button className="primary-create" aria-label={section === "page" ? "New note for this page" : section === "projects" ? "New research project" : "New note"} title={section === "page" ? "New note for this page" : section === "projects" ? "New research project" : "New note"} onClick={() => void createForCurrentView()}><Plus size={18}/></button><button className="ai-entry-button" aria-label="Ask this page" title="Summarize, translate, explain, or ask about this page" onClick={() => setShowAI(true)}><Sparkles size={16}/><span>Ask this page</span></button><button aria-label="Settings" onClick={() => setShowSettings(true)}><SettingsIcon size={17}/></button></div></header>
     <ContextBanner context={context} onCreateNote={() => void createNote("page")} onAskPage={() => setShowAI(true)} emailProvider={emailProvider} onSaveEmail={() => void saveOpenedEmail()} emailBusy={emailCaptureBusy} emailStatus={emailCaptureStatus}/>
-    <nav className="tabs">{(Object.keys(labels) as Section[]).map((key) => <button className={section === key ? "active" : ""} onClick={() => { setSection(key); if (key === "page") { setFavouritesOnly(false); if (selected?.type !== "page" || selected.normalizedPageUrl !== context?.normalizedUrl) setSelectedId(undefined); } }} key={key}>{labels[key]}</button>)}</nav>
+    <nav className="tabs">{(Object.keys(labels) as NoteSection[]).map((key) => <button className={section === key ? "active" : ""} onClick={() => { setSection(key); if (key === "page") { setFavouritesOnly(false); if (selected?.type !== "page" || selected.normalizedPageUrl !== context?.normalizedUrl) setSelectedId(undefined); } }} key={key}>{labels[key]}</button>)}<button className={section === "projects" ? "active" : ""} onClick={() => setSection("projects")}>Projects</button></nav>
+    {section === "projects" ? <ProjectsPanel createRequest={newProjectRequest}/> : <>
     <div className="search-tools"><div className="search-wrap"><Search size={16}/><input id="workpad-search" placeholder={section === "page" ? "Search this site today…" : "Search all notes…"} value={query} onChange={(e) => setQuery(e.target.value)}/>{query && <button aria-label="Clear search" onClick={() => setQuery("")}><X size={14}/></button>}</div>{section === "all" && <><button className={`favourites-filter ${subscriptionsOnly ? "active" : ""}`} aria-pressed={subscriptionsOnly} onClick={() => setSubscriptionsOnly((value) => !value)}><CreditCard size={14}/> Subscriptions</button><button className={`favourites-filter ${favouritesOnly ? "active" : ""}`} aria-pressed={favouritesOnly} onClick={() => setFavouritesOnly((value) => !value)}><Star size={14} fill={favouritesOnly ? "currentColor" : "none"}/> Favourites</button></>}</div>
     <section className="content">
       <aside className="notes-list"><div className="list-heading"><span>{query || favouritesOnly ? "Results" : labels[section]}</span>{section === "page" && context && !context.restricted && <small>{context.domain} · {new Date().toLocaleDateString(undefined, { day: "numeric", month: "short" })}</small>}</div>
@@ -229,6 +236,7 @@ export function App() {
       </aside>
       <section className="editor-panel">{selected ? <Editor note={selected} edit={edit} status={saveStatus} onAskPage={() => setShowAI(true)} onExtractActions={selected.tags.includes("email") ? () => openEmailAI("actions") : undefined} onDraftReply={selected.tags.includes("email") ? () => openEmailAI("reply") : undefined} onShare={() => { setShareInitialDraft(""); setShareInitialPlatform("x"); setShareNote(selected); }} remove={deleteNote} duplicate={async () => { const copy = await notesRepository.create({ ...selected, id: undefined, title: `${selected.title || "Untitled"} (copy)` }); setSelectedId(copy.id); await refresh(); }} /> : <div className="editor-empty"><Archive size={24}/><h2>Select a note</h2><p>Choose a note from the list, or use + to create one.</p><button className="editor-empty-ai" onClick={() => setShowAI(true)}><Sparkles size={14}/> Ask this page</button></div>}</section>
     </section>
+    </>}
     {showSettings && <SettingsModal settings={settings} update={updateSettings} close={() => setShowSettings(false)} notes={notes}/>}
     {showAI && <AIWorkspace settings={settings} initialPrompt={aiStarterPrompt} socialPlatform={aiSocialPlatform} onUseForSocial={aiShareNote && aiSocialPlatform ? (result, platform) => { setShareInitialDraft(socialDraftFromAI(result)); setShareInitialPlatform(platform); setShareNote(aiShareNote); setShowAI(false); setAIStarterPrompt(""); setAIShareNote(undefined); setAISocialPlatform(undefined); } : undefined} onClose={() => { setShowAI(false); setAIStarterPrompt(""); setAIShareNote(undefined); setAISocialPlatform(undefined); setVisibleAINudgeKey(undefined); }} onSave={saveAIResult}/>}
     {visibleAINudgeKey === aiNudgeKey && !showAI && !showSettings && <AINudge onTry={() => { setVisibleAINudgeKey(undefined); setShowAI(true); }} onDismiss={() => setVisibleAINudgeKey(undefined)}/>}
