@@ -12,14 +12,16 @@ import { SnapshotViewer } from "./ProjectsPanel";
 const FALLBACK_BUDGET = 40_000;
 const statusLabels = { full: "Included", shortened: "Shortened", omitted: "Left out" } as const;
 
-export function ResearchQuestion({ project, sources, onClose, onSaved }: {
+export function ResearchQuestion({ project, sources, initialQuestion = "", onClose, onSaved }: {
   project: ResearchProject;
   sources: ResearchSource[];
+  /** Question typed in the project view, so it does not need retyping here. */
+  initialQuestion?: string;
   onClose: () => void;
   onSaved: () => Promise<void>;
 }) {
   const [selected, setSelected] = useState<Set<string>>(() => new Set(sources.slice(0, MAX_SOURCES_PER_QUESTION).map((source) => source.id)));
-  const [question, setQuestion] = useState("");
+  const [question, setQuestion] = useState(initialQuestion);
   const [access, setAccess] = useState<"checking" | "unconfigured" | "signed-out" | "ready">(isAccountConfigured() ? "checking" : "unconfigured");
   const [usage, setUsage] = useState<AIUsage>();
   const [running, setRunning] = useState(false);
