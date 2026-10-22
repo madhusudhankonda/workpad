@@ -57,6 +57,9 @@ export function App() {
   const contextUrl = useRef<string | undefined>(undefined);
   const sectionRef = useRef(section);
   sectionRef.current = section;
+  const settingsRef = useRef(settings);
+  settingsRef.current = settings;
+  const pendingBusy = useRef(false);
   const selected = notes.find((note) => note.id === selectedId);
   const emailProvider = context ? emailProviderForUrl(context.url) : undefined;
 
@@ -74,16 +77,17 @@ export function App() {
         await db.settings.put(stored);
         setSettings(stored); setSection(stored.defaultOpeningSection === "page" ? "page" : "all");
         await refresh();
-        const { pendingCapture, pendingCommand } = await chrome.storage.local.get(["pendingCapture", "pendingCommand"]);
-        if (pendingCapture) {
-          const capture = pendingCapture as PendingCapture;
-          const content = capture.selection ? quotedSelection(capture.selection, capture.url, new Date(capture.capturedAt)) : `Source: ${capture.url}`;
-          const note = await notesRepository.create({ ...blank("page"), title: capture.selection ? `Capture: ${capture.title}` : capture.title, content, pageUrl: capture.url, normalizedPageUrl: normalizeUrl(capture.url, stored.removeTrackingParameters), pageTitle: capture.title, domain: extractDomain(capture.url) });
-          setSelectedId(note.id); await chrome.storage.local.remove("pendingCapture"); await refresh();
-        }
-        if (pendingCommand) { setSection("all"); await chrome.storage.local.remove("pendingCommand"); }
+        await takePendingRequests(stored.removeTrackingParameters);
       } catch (error) { console.error("Unable to initialise Workpad", error); }
     })();
+  }, []);
+  // Captures and commands can arrive while the panel is already open (right-click menu, keyboard shortcuts).
+  useEffect(() => {
+    const onStorageChange = (changes: Record<string, chrome.storage.StorageChange>, area: string) => {
+      if (area === "local" && (changes.pendingCapture?.newValue || changes.pendingCommand?.newValue)) void takePendingRequests(settingsRef.current.removeTrackingParameters);
+    };
+    chrome.storage.onChanged.addListener(onStorageChange);
+    return () => chrome.storage.onChanged.removeListener(onStorageChange);
   }, []);
   useEffect(() => {
     let active = true;
@@ -118,6 +122,26 @@ export function App() {
     addEventListener("keydown", listener); return () => removeEventListener("keydown", listener);
   });
 
+  /** Turns a right-click capture or keyboard command left by the background worker into a note. Runs once at a time and drains anything that arrived meanwhile. */
+  async function takePendingRequests(removeTracking: boolean) {
+    if (pendingBusy.current) return;
+    pendingBusy.current = true;
+    try {
+      for (;;) {
+        const { pendingCapture, pendingCommand } = await chrome.storage.local.get(["pendingCapture", "pendingCommand"]);
+        if (!pendingCapture && !pendingCommand) break;
+        if (pendingCapture) {
+          await chrome.storage.local.remove("pendingCapture");
+          const capture = pendingCapture as PendingCapture;
+          const content = capture.selection ? quotedSelection(capture.selection, capture.url, new Date(capture.capturedAt)) : `Source: ${capture.url}`;
+          const note = await notesRepository.create({ ...blank("page"), title: capture.selection ? `Capture: ${capture.title}` : capture.title, content, pageUrl: capture.url, normalizedPageUrl: normalizeUrl(capture.url, removeTracking), pageTitle: capture.title, domain: extractDomain(capture.url) });
+          setSelectedId(note.id); await refresh();
+        }
+        if (pendingCommand) { await chrome.storage.local.remove("pendingCommand"); setSection("all"); }
+      }
+    } catch (error) { console.error("Unable to save the capture", error); }
+    finally { pendingBusy.current = false; }
+  }
   const createNote = async (type: NoteType) => {
     if ((type === "page" || type === "domain") && (!context || context.restricted)) return;
     // Selected text on the page (read only now, on this click) starts the note as a quote.
