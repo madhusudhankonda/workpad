@@ -11,6 +11,7 @@ import { defaultNoteTitle, displayNoteTitle, groupNotesByWebsiteAndDate, isNoteF
 import { shareText, socialComposerUrl, socialDraft, socialDraftFromAI, type SocialPlatform } from "../utils/socialShare";
 import { AIWorkspace, type SavedAIResult } from "./AIWorkspace";
 import { ProjectsPanel } from "./ProjectsPanel";
+import { useDialogs } from "./dialogContext";
 import { AddToResearch, type CaptureRequest } from "./AddToResearch";
 import { createCheckout, createCustomerPortal, currentSession, deleteAccount, getEntitlements, isAccountConfigured, signInWithGoogle, signOut, type AccountSession, type Entitlements } from "../services/account";
 import { canUseCloudSync, disableNoteSync, enableNoteSync, getNoteSyncStatus, syncCurrentAccountNotes, syncNotes, type NoteSyncStatus } from "../services/noteSync";
@@ -28,6 +29,7 @@ const blank = (type: NoteType = "standalone"): NewNote => ({ title: "", content:
 const noteScopeLabel = (type: NoteType) => type === "page" ? "This page" : type === "domain" ? "Domain" : type === "scratchpad" ? "Scratchpad" : "Note";
 
 export function App() {
+  const dialogs = useDialogs();
   const [notes, setNotes] = useState<Note[]>([]);
   const [context, setContext] = useState<PageContext | null>(null);
   const [settings, setSettings] = useState<Settings>(defaultSettings);
@@ -179,7 +181,7 @@ export function App() {
     saveTimer.current = setTimeout(() => void persist(next), settings.autoSaveDebounce);
   };
   const deleteNote = async () => {
-    if (!selected || !confirm("Delete this note? This cannot be undone.")) return;
+    if (!selected || !(await dialogs.confirm({ title: "Delete this note?", message: "It will be removed from Workpad. This cannot be undone.", confirmLabel: "Delete note", tone: "danger" }))) return;
     await notesRepository.delete(selected.id); setSelectedId(undefined); await refresh();
   };
   const filtered = useMemo(() => notes.filter((note) => {
@@ -382,6 +384,7 @@ export function Onboarding({ step, setStep, done }: { step: number; setStep: (st
 }
 
 function SettingsModal({ settings, update, close, notes }: { settings: Settings; update: (value: Partial<Settings>) => Promise<void>; close: () => void; notes: Note[] }) {
+  const dialogs = useDialogs();
   const importRef = useRef<HTMLInputElement>(null);
   const exportAll = async () => {
     const [projects, sources, briefs] = await Promise.all([db.projects.toArray(), db.sources.toArray(), db.briefs.toArray()]);
@@ -393,17 +396,18 @@ function SettingsModal({ settings, update, close, notes }: { settings: Settings;
       if (file.size > MAX_BACKUP_BYTES) throw new Error(`Backups must be ${MAX_BACKUP_BYTES / 1024 / 1024} MB or smaller.`);
       const value: unknown = JSON.parse(await file.text());
       if (!validateBackup(value)) throw new Error("This is not a valid Workpad backup.");
-      if (!confirm(`Merge ${describeBackup(value)} into Workpad? Nothing already here will be overwritten.`)) return;
+      if (!(await dialogs.confirm({ title: "Import this backup?", message: `It contains ${describeBackup(value)}. They will be merged into Workpad; nothing already here will be overwritten.`, confirmLabel: "Import" }))) return;
       const summary = await importBackup(value);
       const skipped = summary.sourcesSkipped + summary.briefsSkipped;
-      alert(`Imported ${summary.notes} notes, ${summary.projectsAdded} new and ${summary.projectsMerged} existing projects, ${summary.sourcesAdded} sources and ${summary.briefsAdded} briefs.${skipped ? ` ${skipped} items were already here and were skipped.` : ""}`);
+      await dialogs.notify({ title: "Backup imported", message: `Imported ${summary.notes} notes, ${summary.projectsAdded} new and ${summary.projectsMerged} existing projects, ${summary.sourcesAdded} sources and ${summary.briefsAdded} briefs.${skipped ? ` ${skipped} items were already here and were skipped.` : ""}` });
       location.reload();
-    } catch (error) { alert(error instanceof Error ? error.message : "Could not import backup."); }
+    } catch (error) { await dialogs.notify({ title: "Could not import backup", message: error instanceof Error ? error.message : "The file could not be read." }); }
   };
-  return <div className="modal-backdrop" role="presentation"><section className="modal" role="dialog" aria-modal="true"><header><h2>Settings</h2><button onClick={close}><X size={18}/></button></header><div className="modal-scroll"><AccountSettings/><label>Theme<select value={settings.theme} onChange={(e) => void update({ theme: e.target.value as Settings["theme"] })}><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select></label><label>Open Workpad to<select value={settings.defaultOpeningSection === "page" ? "page" : "all"} onChange={(e) => void update({ defaultOpeningSection: e.target.value as Settings["defaultOpeningSection"] })}>{Object.entries(labels).map(([key, label]) => <option value={key} key={key}>{label}</option>)}</select></label><label>Auto-save delay<select value={settings.autoSaveDebounce} onChange={(e) => void update({ autoSaveDebounce: Number(e.target.value) })}><option value={500}>0.5 seconds</option><option value={650}>0.65 seconds</option><option value={800}>0.8 seconds</option></select></label><label className="toggle"><input type="checkbox" checked={settings.removeTrackingParameters} onChange={(e) => void update({ removeTrackingParameters: e.target.checked })}/><span>Remove common tracking parameters</span></label><div className="settings-divider"><span>AI</span></div><label>Maximum page text<select value={settings.aiMaxSourceCharacters} onChange={(e) => void update({ aiMaxSourceCharacters: Number(e.target.value) })}><option value={20000}>20,000 characters</option><option value={40000}>40,000 characters</option><option value={80000}>80,000 characters</option></select></label><div className="settings-actions"><button onClick={() => void exportAll()}><Download size={16}/>Export backup</button><button onClick={() => importRef.current?.click()}><Upload size={16}/>Import backup</button><input hidden ref={importRef} type="file" accept="application/json" onChange={(e) => void importFile(e.target.files?.[0])}/><button className="danger-button" onClick={async () => { if (confirm("Reset all local Workpad data? This cannot be undone.")) { await db.delete(); location.reload(); } }}><Trash2 size={16}/>Reset local data</button></div></div></section></div>;
+  return <div className="modal-backdrop" role="presentation"><section className="modal" role="dialog" aria-modal="true"><header><h2>Settings</h2><button onClick={close}><X size={18}/></button></header><div className="modal-scroll"><AccountSettings/><label>Theme<select value={settings.theme} onChange={(e) => void update({ theme: e.target.value as Settings["theme"] })}><option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option></select></label><label>Open Workpad to<select value={settings.defaultOpeningSection === "page" ? "page" : "all"} onChange={(e) => void update({ defaultOpeningSection: e.target.value as Settings["defaultOpeningSection"] })}>{Object.entries(labels).map(([key, label]) => <option value={key} key={key}>{label}</option>)}</select></label><label>Auto-save delay<select value={settings.autoSaveDebounce} onChange={(e) => void update({ autoSaveDebounce: Number(e.target.value) })}><option value={500}>0.5 seconds</option><option value={650}>0.65 seconds</option><option value={800}>0.8 seconds</option></select></label><label className="toggle"><input type="checkbox" checked={settings.removeTrackingParameters} onChange={(e) => void update({ removeTrackingParameters: e.target.checked })}/><span>Remove common tracking parameters</span></label><div className="settings-divider"><span>AI</span></div><label>Maximum page text<select value={settings.aiMaxSourceCharacters} onChange={(e) => void update({ aiMaxSourceCharacters: Number(e.target.value) })}><option value={20000}>20,000 characters</option><option value={40000}>40,000 characters</option><option value={80000}>80,000 characters</option></select></label><div className="settings-actions"><button onClick={() => void exportAll()}><Download size={16}/>Export backup</button><button onClick={() => importRef.current?.click()}><Upload size={16}/>Import backup</button><input hidden ref={importRef} type="file" accept="application/json" onChange={(e) => void importFile(e.target.files?.[0])}/><button className="danger-button" onClick={async () => { if (await dialogs.confirm({ title: "Reset all local data?", message: "Notes, research projects, sources and briefs stored on this device will be deleted. Export a backup first if you want to keep them. Cloud copies are not affected. This cannot be undone.", confirmLabel: "Reset everything", tone: "danger" })) { await db.delete(); location.reload(); } }}><Trash2 size={16}/>Reset local data</button></div></div></section></div>;
 }
 
 function AccountSettings() {
+  const dialogs = useDialogs();
   const [session, setSession] = useState<AccountSession>();
   const [entitlements, setEntitlements] = useState<Entitlements>();
   const [syncStatus, setSyncStatus] = useState<NoteSyncStatus>();
@@ -451,8 +455,9 @@ function AccountSettings() {
     if (!session) return;
     const firstSyncNotice = "Enable Workpad Cloud sync? Your saved note titles, content, tags, page sources and timestamps will be uploaded to your private Workpad account hosted on Supabase and merged with any notes already there. Cloud notes are protected per account, but are not end-to-end encrypted.";
     const switchedAccountNotice = "This device was previously linked to another Workpad account. Enabling sync will upload the notes currently stored on this device to this private Workpad Cloud account, hosted on Supabase. Cloud notes are not end-to-end encrypted. Continue?";
-    if (action === "enable" && !confirm(syncStatus?.enabled && !syncStatus.accountMatches ? switchedAccountNotice : firstSyncNotice)) return;
-    if (action === "disable" && !confirm("Stop syncing notes on this device? Local and cloud copies will remain available.")) return;
+    const switchedAccount = Boolean(syncStatus?.enabled && !syncStatus.accountMatches);
+    if (action === "enable" && !(await dialogs.confirm({ title: switchedAccount ? "Sync to a different account?" : "Turn on cloud sync?", message: switchedAccount ? switchedAccountNotice : firstSyncNotice, confirmLabel: "Turn on sync" }))) return;
+    if (action === "disable" && !(await dialogs.confirm({ title: "Turn off cloud sync?", message: "Local and cloud copies will both remain available.", confirmLabel: "Turn off sync" }))) return;
     setSyncBusy(true); setError("");
     try {
       if (action === "enable") await enableNoteSync(session);
@@ -464,7 +469,7 @@ function AccountSettings() {
     finally { setSyncBusy(false); }
   };
   const removeAccount = async () => {
-    if (!session || !confirm("Permanently delete your Workpad account? This cancels any Pro subscription and deletes cloud notes and account data. Notes stored locally on this device will remain. This cannot be undone.")) return;
+    if (!session || !(await dialogs.confirm({ title: "Delete your Workpad account?", message: "This cancels any Pro subscription and permanently deletes your cloud notes and account data. Notes stored on this device remain. This cannot be undone.", confirmLabel: "Delete account", tone: "danger" }))) return;
     setBusy(true); setError("");
     try { await deleteAccount(session); await disableNoteSync(); setSession(undefined); setEntitlements(undefined); setSyncStatus(await getNoteSyncStatus()); }
     catch (deleteError) { setError(deleteError instanceof Error ? deleteError.message : "Unable to delete your account."); }
