@@ -112,10 +112,14 @@ export interface PageContext {
 }
 
 export interface WorkpadBackup {
-  version: 1;
+  /** 1 = notes only. 2 adds research projects, their source snapshots and decision briefs. */
+  version: 1 | 2;
   exportedAt: string;
   notes: Note[];
   settings?: Settings;
+  projects?: ResearchProject[];
+  sources?: ResearchSource[];
+  briefs?: DecisionBrief[];
 }
 
 export type AIAction = "summary" | "translate" | "actions" | "explain" | "custom" | "research_question" | "decision_brief";
