@@ -1,8 +1,18 @@
 import { useEffect, useRef, useState } from "react";
-import { FolderOpen, FolderPlus, Plus, Trash2 } from "lucide-react";
+import { ExternalLink, FileText, FolderOpen, FolderPlus, Mail, NotebookPen, Plus, Sparkles, TextSelect, Trash2, X } from "lucide-react";
 import { MAX_PROJECT_DESCRIPTION_LENGTH, MAX_PROJECT_NAME_LENGTH, projectsRepository, type ProjectSummary } from "../db/repositories/projectsRepository";
+import { sourcesRepository } from "../db/repositories/sourcesRepository";
+import type { ResearchSource, ResearchSourceType } from "../types";
 
 const shortDate = (value: string) => new Date(value).toLocaleDateString(undefined, { day: "numeric", month: "short" });
+const sourceTypes: Record<ResearchSourceType, { label: string; icon: typeof FileText }> = {
+  page: { label: "Web page", icon: FileText },
+  selection: { label: "Selection", icon: TextSelect },
+  email: { label: "Email", icon: Mail },
+  note: { label: "Note", icon: NotebookPen },
+  ai_result: { label: "AI result", icon: Sparkles }
+};
+const isWebUrl = (url?: string) => Boolean(url && /^https?:\/\//i.test(url));
 const sourceLabel = (count: number) => `${count} ${count === 1 ? "source" : "sources"}`;
 
 /** Lists research projects and creates new ones. Reused by "Add to research" in phase 2. */
@@ -54,6 +64,17 @@ function ProjectDetail({ project, onChanged, onDeleted }: { project: ProjectSumm
   const [name, setName] = useState(project.name);
   const [description, setDescription] = useState(project.description);
   const [error, setError] = useState("");
+  const [sources, setSources] = useState<ResearchSource[]>();
+  const [viewing, setViewing] = useState<ResearchSource>();
+
+  useEffect(() => { void sourcesRepository.listForProject(project.id).then(setSources); }, [project.id]);
+  const removeSource = async (source: ResearchSource) => {
+    if (!confirm(`Remove “${source.title}” from ${project.name}? The original page, email or note is not affected.`)) return;
+    await sourcesRepository.remove(source.id);
+    setViewing(undefined);
+    setSources(await sourcesRepository.listForProject(project.id));
+    await onChanged();
+  };
 
   const save = async (changes: { name?: string; description?: string }) => {
     if ((changes.name ?? project.name) === project.name && (changes.description ?? project.description) === project.description) return;
@@ -75,13 +96,43 @@ function ProjectDetail({ project, onChanged, onDeleted }: { project: ProjectSumm
     <input className="title-input" aria-label="Project name" maxLength={MAX_PROJECT_NAME_LENGTH} value={name} onChange={(event) => setName(event.target.value)} onBlur={() => void save({ name })} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }}/>
     <textarea className="project-description" aria-label="Project description" placeholder="What decision is this research for?" rows={3} maxLength={MAX_PROJECT_DESCRIPTION_LENGTH} value={description} onChange={(event) => setDescription(event.target.value)} onBlur={() => void save({ description })}/>
     {error && <small className="project-error" role="alert">{error}</small>}
-    <div className="empty-state project-sources-empty"><FolderOpen size={22}/><strong>No sources yet</strong><p>Soon you’ll add pages, selections and emails here, then ask questions across them.</p></div>
+    {sources && (sources.length
+      ? <div className="source-list" aria-label="Sources">{sources.map((source) => {
+          const type = sourceTypes[source.sourceType];
+          return <button key={source.id} className="note-card source-card" onClick={() => setViewing(source)}>
+            <div className="note-card-title"><type.icon size={13}/>{source.title}</div>
+            <footer><span className="type-pill">{type.label}</span>{source.version > 1 && <span className="type-pill">v{source.version}</span>}{source.domain && <span>{source.domain}</span>}<time dateTime={source.capturedAt}>{shortDate(source.capturedAt)}</time></footer>
+          </button>;
+        })}</div>
+      : <div className="empty-state project-sources-empty"><FolderOpen size={22}/><strong>No sources yet</strong><p>Use Research on a page, email or note to add it here.</p></div>)}
+    {viewing && <SnapshotViewer source={viewing} onClose={() => setViewing(undefined)} onRemove={() => void removeSource(viewing)}/>}
   </div>;
 }
 
-export function ProjectsPanel({ createRequest = 0 }: { createRequest?: number }) {
+/** Shows exactly what was captured, when, and from where. */
+export function SnapshotViewer({ source, onClose, onRemove }: { source: ResearchSource; onClose: () => void; onRemove?: () => void }) {
+  const type = sourceTypes[source.sourceType];
+  return <div className="modal-backdrop" role="presentation">
+    <section className="modal research-modal" role="dialog" aria-modal="true" aria-label={`Snapshot: ${source.title}`}>
+      <header><h2>{source.title}</h2><button aria-label="Close snapshot" onClick={onClose}><X size={18}/></button></header>
+      <div className="modal-scroll">
+        <dl className="snapshot-meta">
+          <div><dt>Type</dt><dd>{type.label}{source.version > 1 ? ` · version ${source.version}` : ""}</dd></div>
+          <div><dt>Captured</dt><dd>{new Date(source.capturedAt).toLocaleString()}</dd></div>
+          {source.url && <div><dt>From</dt><dd>{isWebUrl(source.url) ? <a href={source.url} target="_blank" rel="noreferrer">{source.domain || source.url} <ExternalLink size={11}/></a> : source.domain || source.url}</dd></div>}
+        </dl>
+        {source.snapshotTruncated && <p className="snapshot-note">This source was long, so Workpad stored its start and end and shortened the middle.</p>}
+        <pre className="snapshot-text" aria-label="Captured text">{source.snapshotText}</pre>
+        <p className="snapshot-note">This is the text as captured. Later changes to the original are not reflected here.</p>
+      </div>
+      {onRemove && <footer className="research-footer"><button className="danger-button" onClick={onRemove}><Trash2 size={14}/>Remove from project</button><button className="secondary" onClick={onClose}>Close</button></footer>}
+    </section>
+  </div>;
+}
+
+export function ProjectsPanel({ createRequest = 0, initialProjectId }: { createRequest?: number; initialProjectId?: string }) {
   const [projects, setProjects] = useState<ProjectSummary[]>();
-  const [selectedId, setSelectedId] = useState<string>();
+  const [selectedId, setSelectedId] = useState<string | undefined>(initialProjectId);
   const selected = projects?.find((project) => project.id === selectedId);
 
   const load = async () => setProjects(await projectsRepository.list());
