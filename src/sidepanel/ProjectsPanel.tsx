@@ -6,6 +6,7 @@ import { briefsRepository } from "../db/repositories/briefsRepository";
 import { BriefWorkspace } from "./BriefWorkspace";
 import type { DecisionBrief, ResearchSource, ResearchSourceType } from "../types";
 import { ResearchQuestion } from "./ResearchQuestion";
+import { useDialogs } from "./dialogContext";
 import { splitAtPassage } from "../utils/passages";
 
 const shortDate = (value: string) => new Date(value).toLocaleDateString(undefined, { day: "numeric", month: "short" });
@@ -65,6 +66,7 @@ export function ProjectPicker({ projects, selectedId, onSelect, onCreate, create
 }
 
 function ProjectDetail({ project, onChanged, onDeleted }: { project: ProjectSummary; onChanged: () => Promise<void>; onDeleted: () => Promise<void> }) {
+  const dialogs = useDialogs();
   const [name, setName] = useState(project.name);
   const [description, setDescription] = useState(project.description);
   const [error, setError] = useState("");
@@ -80,7 +82,7 @@ function ProjectDetail({ project, onChanged, onDeleted }: { project: ProjectSumm
     void briefsRepository.listForProject(project.id).then(setBriefs);
   }, [project.id]);
   const removeSource = async (source: ResearchSource) => {
-    if (!confirm(`Remove “${source.title}” from ${project.name}? The original page, email or note is not affected.`)) return;
+    if (!(await dialogs.confirm({ title: "Remove this source?", message: `“${source.title}” will be removed from ${project.name}. The original page, email or note is not affected.`, confirmLabel: "Remove source", tone: "danger" }))) return;
     await sourcesRepository.remove(source.id);
     setViewing(undefined);
     setSources(await sourcesRepository.listForProject(project.id));
@@ -97,7 +99,7 @@ function ProjectDetail({ project, onChanged, onDeleted }: { project: ProjectSumm
   };
   const remove = async () => {
     const sources = project.sourceCount ? ` and its ${sourceLabel(project.sourceCount)}` : "";
-    if (!confirm(`Delete “${project.name}”${sources}? Your notes are not affected. This cannot be undone.`)) return;
+    if (!(await dialogs.confirm({ title: "Delete this project?", message: `“${project.name}”${sources} will be deleted. Your notes are not affected. This cannot be undone.`, confirmLabel: "Delete project", tone: "danger" }))) return;
     await projectsRepository.delete(project.id);
     await onDeleted();
   };

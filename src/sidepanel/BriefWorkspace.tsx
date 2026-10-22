@@ -10,6 +10,7 @@ import { MarkdownResult } from "./AIWorkspace";
 import { SnapshotViewer } from "./ProjectsPanel";
 import { AIAccessNotice, SourceChecklist } from "./SourceChecklist";
 import { useResearchAI } from "./useResearchAI";
+import { useDialogs } from "./dialogContext";
 
 function BriefGenerator({ project, sources, onCreated }: { project: ResearchProject; sources: ResearchSource[]; onCreated: (brief: DecisionBrief) => void }) {
   const { access, usage, error, setError, signIn, selected, toggle, evidence, outOfCredits, afterRequest } = useResearchAI(sources);
@@ -64,6 +65,7 @@ function BriefGenerator({ project, sources, onCreated }: { project: ResearchProj
 }
 
 function BriefEditor({ brief: initial, sources, onChanged, onDeleted }: { brief: DecisionBrief; sources: ResearchSource[]; onChanged: () => Promise<void>; onDeleted: () => Promise<void> }) {
+  const dialogs = useDialogs();
   const [brief, setBrief] = useState(initial);
   const [mode, setMode] = useState<"preview" | "edit">("preview");
   const [status, setStatus] = useState("");
@@ -88,7 +90,7 @@ function BriefEditor({ brief: initial, sources, onChanged, onDeleted }: { brief:
     catch { setStatus("Copy failed. Use Download instead."); }
   };
   const remove = async () => {
-    if (!confirm(`Delete “${brief.title}”? Its sources stay in the project. This cannot be undone.`)) return;
+    if (!(await dialogs.confirm({ title: "Delete this brief?", message: `“${brief.title}” will be deleted. Its sources stay in the project. This cannot be undone.`, confirmLabel: "Delete brief", tone: "danger" }))) return;
     await briefsRepository.delete(brief.id);
     await onDeleted();
   };
