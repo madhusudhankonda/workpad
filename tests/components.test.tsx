@@ -20,7 +20,7 @@ describe("side panel components", () => {
   });
   it("shows editor save status and changes title", () => {
     const edit = vi.fn();
-    render(<Editor note={note} edit={edit} status="saved" onAskPage={vi.fn()} remove={vi.fn()} duplicate={vi.fn()} />);
+    render(<Editor note={note} edit={edit} status="saved" remove={vi.fn()} duplicate={vi.fn()} />);
     expect(screen.getByText("Saved")).toBeInTheDocument();
     fireEvent.change(screen.getByDisplayValue("Meeting notes"), { target: { value: "Updated" } });
     expect(edit).toHaveBeenCalledWith({ title: "Updated" });
@@ -32,7 +32,7 @@ describe("side panel components", () => {
     expect(screen.getByText("Example")).toBeInTheDocument();
     expect(screen.getByText("Current page")).toBeInTheDocument();
     expect(screen.getByText(/example.com/)).toBeInTheDocument();
-    expect(screen.getByText("Ask Workpad AI about this page, or save it.")).toBeInTheDocument();
+    expect(screen.getByText("Summarise, explain, translate or ask anything. Text is sent only when you choose.")).toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Add note" }));
     fireEvent.click(screen.getByRole("button", { name: "Ask this page" }));
     expect(create).toHaveBeenCalledOnce();
@@ -46,12 +46,9 @@ describe("side panel components", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save email" }));
     expect(saveEmail).toHaveBeenCalledOnce();
   });
-  it("offers a visible page action in a new note", () => {
-    const ask = vi.fn();
-    render(<Editor note={{ ...note, title: "", content: "" }} edit={vi.fn()} status="saved" onAskPage={ask} remove={vi.fn()} duplicate={vi.fn()} />);
-    fireEvent.click(screen.getByRole("button", { name: "Ask this page" }));
-    expect(ask).toHaveBeenCalled();
-    expect(screen.getByText(/Summarize, translate, explain/)).toBeInTheDocument();
+  it("does not repeat Ask this page inside a new note", () => {
+    render(<Editor note={{ ...note, title: "", content: "" }} edit={vi.fn()} status="saved" remove={vi.fn()} duplicate={vi.fn()} />);
+    expect(screen.queryByRole("button", { name: /Ask this/ })).not.toBeInTheDocument();
   });
   it("uses the page headline as a default note title", () => {
     expect(defaultNoteTitle("page", { url: "https://example.com", normalizedUrl: "https://example.com", domain: "example.com", title: "A useful headline", restricted: false })).toBe("A useful headline");
@@ -70,11 +67,16 @@ describe("side panel components", () => {
     expect(isNoteForSiteToday(note, { ...context, domain: "other.example" }, new Date("2026-01-01T18:00:00"))).toBe(false);
     expect(isNoteForSiteToday(note, context, new Date("2026-01-02T18:00:00"))).toBe(false);
   });
-  it("leads the page banner with Ask this page", () => {
-    render(<ContextBanner context={{ url: "https://example.com/a", normalizedUrl: "https://example.com/a", domain: "example.com", title: "Example", restricted: false }} onCreateNote={vi.fn()} onAskPage={vi.fn()} onAddToResearch={vi.fn()}/>);
-    const buttons = screen.getAllByRole("button").map((button) => button.textContent?.trim());
-    expect(buttons).toEqual(["Ask this page", "Research", "Add note"]);
-    expect(screen.getByText("Ask Workpad AI about this page, or save it.")).toBeInTheDocument();
+  it("puts note and research beside the page and one Ask button below", () => {
+    const research = vi.fn();
+    render(<ContextBanner context={{ url: "https://example.com/a", normalizedUrl: "https://example.com/a", domain: "example.com", title: "Example", restricted: false }} onCreateNote={vi.fn()} onAskPage={vi.fn()} onAddToResearch={research}/>);
+    expect(screen.getAllByRole("button").map((button) => button.textContent?.trim())).toEqual(["Add note", "Add to research", "Ask this page"]);
+    fireEvent.click(screen.getByRole("button", { name: "Add to research" }));
+    expect(research).toHaveBeenCalledOnce();
+  });
+  it("adapts the banner to webmail", () => {
+    render(<ContextBanner context={{ url: "https://mail.google.com/mail/u/0/#inbox/abc", normalizedUrl: "https://mail.google.com/mail/u/0#inbox/abc", domain: "mail.google.com", title: "Renewal", restricted: false }} emailProvider="gmail" onSaveEmail={vi.fn()} onCreateNote={vi.fn()} onAskPage={vi.fn()} onAddToResearch={vi.fn()}/>);
+    expect(screen.getAllByRole("button").map((button) => button.textContent?.trim())).toEqual(["Save email", "Add to research", "Ask this email"]);
   });
   it("ends onboarding with a skippable sign-in step", () => {
     const done = vi.fn();
