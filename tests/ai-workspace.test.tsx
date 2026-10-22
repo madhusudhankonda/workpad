@@ -66,6 +66,26 @@ describe("AI workspace", () => {
     expect(save).toHaveBeenCalledWith(expect.objectContaining({ content: expect.stringContaining("## Evidence") }));
   });
 
+  it("warns when an answer was cut short and notes it in the saved note", async () => {
+    vi.stubGlobal("chrome", {
+      tabs: { query: vi.fn().mockResolvedValue([{ id: 7, url: "https://example.com/article" }]) },
+      scripting: { executeScript: vi.fn().mockResolvedValue([{ result: { title: "Article title", url: "https://example.com/article", selection: "", text: "The full article", truncated: false } }]) },
+      storage: signedInStorage()
+    });
+    vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => String(input).includes("get_my_ai_usage")
+      ? new Response(JSON.stringify([usageRow]), { status: 200 })
+      : new Response(JSON.stringify({ text: "Partial summary [P1]", model: "gpt-5.6-luna", truncated: true }), { status: 200 }));
+    const save = vi.fn().mockResolvedValue(undefined);
+    render(<AIWorkspace settings={settings} onClose={vi.fn()} onSave={save}/>);
+    await screen.findByText("Workpad AI · 26 of 30 credits left");
+
+    fireEvent.click(screen.getByText("Summarize").closest("button")!);
+
+    expect(await screen.findByText(/cut short because it reached Workpad AI's length limit/)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Save as note" }));
+    expect(save).toHaveBeenCalledWith(expect.objectContaining({ content: expect.stringContaining("cut short") }));
+  });
+
   it("asks signed-out users to sign in instead of asking for an API key", async () => {
     vi.stubGlobal("chrome", {
       tabs: { query: vi.fn().mockResolvedValue([{ id: 7, url: "https://example.com/article" }]) },

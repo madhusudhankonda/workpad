@@ -22,10 +22,12 @@ export interface AIUsage {
 export interface AIResult {
   text: string;
   model: string;
+  /** The answer stopped early, usually at the output length limit. */
+  truncated: boolean;
   usage?: Omit<AIUsage, "maxSourceCharacters"> & { creditsCharged: number };
 }
 
-export type AIErrorCode = "unauthenticated" | "quota_exceeded" | "rate_limited" | "busy" | "source_too_large" | "ai_disabled" | "unavailable";
+export type AIErrorCode = "unauthenticated" | "quota_exceeded" | "rate_limited" | "busy" | "source_too_large" | "ai_disabled" | "output_limit" | "unavailable";
 
 export class AIRequestError extends Error {
   constructor(public readonly code: AIErrorCode, message: string) {
@@ -35,7 +37,7 @@ export class AIRequestError extends Error {
 }
 
 const REQUEST_TIMEOUT_MS = 70_000;
-const knownCodes = new Set<AIErrorCode>(["unauthenticated", "quota_exceeded", "rate_limited", "busy", "source_too_large", "ai_disabled"]);
+const knownCodes = new Set<AIErrorCode>(["unauthenticated", "quota_exceeded", "rate_limited", "busy", "source_too_large", "ai_disabled", "output_limit"]);
 
 export function validateEvidenceCitations(result: string, source: string): string {
   const available = new Set(Array.from(source.matchAll(/^\[(P\d+)\]\s/gm), (match) => match[1]));
@@ -92,7 +94,7 @@ export async function runAIAction(request: AIRequest, signal?: AbortSignal): Pro
     if (timeout.aborted) throw new AIRequestError("unavailable", "Workpad AI took too long to respond. Please try again.");
     throw new AIRequestError("unavailable", "Workpad AI could not be reached. Check your connection and try again.");
   }
-  const payload = await response.json().catch(() => undefined) as { text?: unknown; model?: unknown; usage?: AIResult["usage"]; error?: unknown; message?: unknown } | undefined;
+  const payload = await response.json().catch(() => undefined) as { text?: unknown; model?: unknown; truncated?: unknown; usage?: AIResult["usage"]; error?: unknown; message?: unknown } | undefined;
   if (!response.ok) {
     const code = typeof payload?.error === "string" && knownCodes.has(payload.error as AIErrorCode) ? payload.error as AIErrorCode : response.status === 401 ? "unauthenticated" : "unavailable";
     throw new AIRequestError(code, typeof payload?.message === "string" ? payload.message : `Workpad AI request failed (${response.status}).`);
@@ -102,6 +104,7 @@ export async function runAIAction(request: AIRequest, signal?: AbortSignal): Pro
   return {
     text: validateEvidenceCitations(text, request.source),
     model: typeof payload?.model === "string" ? payload.model : "Workpad AI",
+    truncated: payload?.truncated === true,
     usage: payload?.usage
   };
 }

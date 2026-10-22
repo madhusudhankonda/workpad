@@ -11,7 +11,8 @@ export interface ProxyAIRequest {
   customPrompt?: string;
 }
 
-export const MAX_OUTPUT_TOKENS = 2_500;
+/** Reasoning tokens count toward this cap, so it must leave room for both reasoning and the answer. */
+export const MAX_OUTPUT_TOKENS = 6_000;
 /** One credit is this many weighted tokens. Output tokens count four times, matching their higher price. */
 export const CREDIT_WEIGHTED_TOKENS = 10_000;
 export const OUTPUT_TOKEN_WEIGHT = 4;
@@ -108,6 +109,15 @@ export function readResponseText(payload: unknown): string {
       return typeof text === "string" ? [text] : [];
     });
   }).join("\n").trim();
+}
+
+/** True when OpenAI stopped early, for example because the output token cap was reached. */
+export function readIncomplete(payload: unknown): { incomplete: boolean; reason?: string } {
+  if (!payload || typeof payload !== "object") return { incomplete: false };
+  const response = payload as { status?: unknown; incomplete_details?: { reason?: unknown } | null };
+  if (response.status !== "incomplete") return { incomplete: false };
+  const reason = response.incomplete_details?.reason;
+  return { incomplete: true, reason: typeof reason === "string" ? reason : undefined };
 }
 
 export function readUsage(payload: unknown): { inputTokens: number; outputTokens: number } {

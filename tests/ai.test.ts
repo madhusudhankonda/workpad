@@ -28,6 +28,7 @@ describe("AI service", () => {
     const result = await runAIAction(request);
 
     expect(result.text).toBe("Summary [P1]");
+    expect(result.truncated).toBe(false);
     expect(result.usage?.creditsRemaining).toBe(26);
     const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
     expect(url).toBe("https://project.supabase.co/functions/v1/ai-proxy");
@@ -36,6 +37,16 @@ describe("AI service", () => {
     expect(body).toEqual(request);
     expect(body).not.toHaveProperty("model");
     expect(body).not.toHaveProperty("apiKey");
+  });
+
+  it("reports answers the proxy marks as cut short", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ text: "Partial summary [P1]", model: "m", truncated: true }), { status: 200 }));
+    await expect(runAIAction(request)).resolves.toMatchObject({ text: "Partial summary [P1]", truncated: true });
+  });
+
+  it("maps the output limit error from the proxy", async () => {
+    vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response(JSON.stringify({ error: "output_limit", message: "This request needed more than Workpad AI's answer length limit." }), { status: 502 }));
+    await expect(runAIAction(request)).rejects.toMatchObject({ code: "output_limit" });
   });
 
   it("requires a signed-in account before calling the proxy", async () => {
