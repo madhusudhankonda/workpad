@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Workpad",
   "version": "0.1.0",
-  "description": "A contextual notebook beside every browser tab.",
+  "description": "AI research assistant beside every tab: ask about any page, collect sources and decide with cited evidence.",
   "icons": {
     "16": "icons/icon-16.png",
     "32": "icons/icon-32.png",

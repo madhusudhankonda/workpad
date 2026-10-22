@@ -38,7 +38,6 @@ export function App() {
   const [saveStatus, setSaveStatus] = useState<"saved" | "saving" | "failed">("saved");
   const [showSettings, setShowSettings] = useState(false);
   const [showAI, setShowAI] = useState(false);
-  const [visibleAINudgeKey, setVisibleAINudgeKey] = useState<string>();
   const [shareNote, setShareNote] = useState<Note>();
   const [shareInitialDraft, setShareInitialDraft] = useState("");
   const [shareInitialPlatform, setShareInitialPlatform] = useState<SocialPlatform>("x");
@@ -58,8 +57,6 @@ export function App() {
   const sectionRef = useRef(section);
   sectionRef.current = section;
   const selected = notes.find((note) => note.id === selectedId);
-  const now = new Date();
-  const aiNudgeKey = context && !context.restricted ? `${context.domain}|${now.getFullYear()}-${now.getMonth() + 1}-${now.getDate()}` : undefined;
   const emailProvider = context ? emailProviderForUrl(context.url) : undefined;
 
   const refresh = async () => {
@@ -109,20 +106,6 @@ export function App() {
   useEffect(() => {
     document.documentElement.dataset.theme = settings.theme;
   }, [settings.theme]);
-  useEffect(() => {
-    if (!settings.onboardingCompleted || !aiNudgeKey || showAI || showSettings) return;
-    let active = true;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    void chrome.storage.local.get("aiNudgeSeen").then(({ aiNudgeSeen }) => {
-      if (!active || aiNudgeSeen === aiNudgeKey) return;
-      timer = setTimeout(() => {
-        if (!active) return;
-        setVisibleAINudgeKey(aiNudgeKey);
-        void chrome.storage.local.set({ aiNudgeSeen: aiNudgeKey });
-      }, 8_000);
-    });
-    return () => { active = false; if (timer) clearTimeout(timer); };
-  }, [aiNudgeKey, settings.onboardingCompleted, showAI, showSettings]);
   useEffect(() => () => { if (saveTimer.current) clearTimeout(saveTimer.current); }, []);
   useEffect(() => {
     const listener = (event: KeyboardEvent) => {
@@ -243,8 +226,7 @@ export function App() {
     </>}
     {researchRequest && <AddToResearch request={researchRequest} removeTracking={settings.removeTrackingParameters} onClose={() => setResearchRequest(undefined)} onOpenProject={(projectId) => { setResearchRequest(undefined); setFocusProjectId(projectId); setSection("projects"); }} onAdded={(projectId) => { setFocusProjectId(projectId); setResearchVersion((version) => version + 1); }}/>}
     {showSettings && <SettingsModal settings={settings} update={updateSettings} close={() => setShowSettings(false)} notes={notes}/>}
-    {showAI && <AIWorkspace settings={settings} initialPrompt={aiStarterPrompt} socialPlatform={aiSocialPlatform} onUseForSocial={aiShareNote && aiSocialPlatform ? (result, platform) => { setShareInitialDraft(socialDraftFromAI(result)); setShareInitialPlatform(platform); setShareNote(aiShareNote); setShowAI(false); setAIStarterPrompt(""); setAIShareNote(undefined); setAISocialPlatform(undefined); } : undefined} onClose={() => { setShowAI(false); setAIStarterPrompt(""); setAIShareNote(undefined); setAISocialPlatform(undefined); setVisibleAINudgeKey(undefined); }} onSave={saveAIResult}/>}
-    {visibleAINudgeKey === aiNudgeKey && !showAI && !showSettings && <AINudge onTry={() => { setVisibleAINudgeKey(undefined); setShowAI(true); }} onDismiss={() => setVisibleAINudgeKey(undefined)}/>}
+    {showAI && <AIWorkspace settings={settings} initialPrompt={aiStarterPrompt} socialPlatform={aiSocialPlatform} onUseForSocial={aiShareNote && aiSocialPlatform ? (result, platform) => { setShareInitialDraft(socialDraftFromAI(result)); setShareInitialPlatform(platform); setShareNote(aiShareNote); setShowAI(false); setAIStarterPrompt(""); setAIShareNote(undefined); setAISocialPlatform(undefined); } : undefined} onClose={() => { setShowAI(false); setAIStarterPrompt(""); setAIShareNote(undefined); setAISocialPlatform(undefined); }} onSave={saveAIResult}/>}
     {shareNote && <SocialShareModal note={shareNote} initialDraft={shareInitialDraft} initialPlatform={shareInitialPlatform} close={() => setShareNote(undefined)} onWriteWithAI={(platform) => {
       const tone = platform === "x" ? "a concise, engaging X post within 280 characters" : platform === "reddit" ? "an authentic, discussion-oriented Reddit post with a clear title and no clickbait" : "a thoughtful LinkedIn post with a strong opening, professional insight, and a closing question";
       setAIStarterPrompt(`Write ${tone} based on this page and my note. Preserve factual accuracy and cite the supplied evidence passages. My note title is: ${displayNoteTitle(shareNote)}. My note says: ${shareNote.content || "Use the page as the source."}`);
@@ -256,7 +238,7 @@ export function App() {
 export function ContextBanner({ context, onCreateNote, onAskPage, onAddToResearch, emailProvider, onSaveEmail, emailBusy = false, emailStatus = "" }: { context: PageContext | null; onCreateNote?: () => void; onAskPage?: () => void; onAddToResearch?: () => void; emailProvider?: EmailProvider; onSaveEmail?: () => void; emailBusy?: boolean; emailStatus?: string }) {
   if (!context) return <div className="context-banner loading">Finding your current page…</div>;
   if (context.restricted) return <div className="context-banner restricted"><strong>This browser page is restricted.</strong><span>Workpad cannot read page details here.</span></div>;
-  return <div className={`context-banner ${emailProvider ? "email-context" : ""}`}><div className="context-title"><span className="domain-mark" aria-hidden="true">{emailProvider ? <Mail size={11}/> : context.domain.slice(0, 1).toUpperCase()}</span><div><small>{emailProvider ? `${emailProviderLabel(emailProvider)} message` : "Current page"}</small><strong>{context.title}</strong><span>{context.domain} · {context.url}</span></div></div><div className="context-actions"><span>{emailProvider ? "Save this email, then turn it into action." : "What would you like to do?"}</span><div>{emailProvider && onSaveEmail && <button className="save-email" disabled={emailBusy} onClick={onSaveEmail}><Mail size={13}/> {emailBusy ? "Saving…" : "Save email"}</button>}{onCreateNote && <button onClick={onCreateNote}><FilePlus2 size={13}/> Add note</button>}{onAddToResearch && <button aria-label={emailProvider ? "Add this email to research" : "Add this page to research"} title={emailProvider ? "Add this email to a research project" : "Add this page or your selection to a research project"} onClick={onAddToResearch}><FolderPlus size={13}/> Research</button>}{onAskPage && <button className="ask" onClick={onAskPage}><Sparkles size={13}/> Ask this page</button>}</div></div>{emailStatus && <small className="email-capture-status" role="status">{emailStatus}</small>}</div>;
+  return <div className={`context-banner ${emailProvider ? "email-context" : ""}`}><div className="context-title"><span className="domain-mark" aria-hidden="true">{emailProvider ? <Mail size={11}/> : context.domain.slice(0, 1).toUpperCase()}</span><div><small>{emailProvider ? `${emailProviderLabel(emailProvider)} message` : "Current page"}</small><strong>{context.title}</strong><span>{context.domain} · {context.url}</span></div></div><div className="context-actions"><span>{emailProvider ? "Ask Workpad AI about this email, or save it." : "Ask Workpad AI about this page, or save it."}</span><div>{onAskPage && <button className="ask" onClick={onAskPage}><Sparkles size={13}/> Ask this page</button>}{emailProvider && onSaveEmail && <button className="save-email" disabled={emailBusy} onClick={onSaveEmail}><Mail size={13}/> {emailBusy ? "Saving…" : "Save email"}</button>}{onAddToResearch && <button aria-label={emailProvider ? "Add this email to research" : "Add this page to research"} title={emailProvider ? "Add this email to a research project" : "Add this page or your selection to a research project"} onClick={onAddToResearch}><FolderPlus size={13}/> Research</button>}{onCreateNote && <button onClick={onCreateNote}><FilePlus2 size={13}/> Add note</button>}</div></div>{emailStatus && <small className="email-capture-status" role="status">{emailStatus}</small>}</div>;
 }
 
 export function NoteCard({ note, selected, onClick }: { note: Note; selected: boolean; onClick: () => void }) {
@@ -265,10 +247,6 @@ export function NoteCard({ note, selected, onClick }: { note: Note; selected: bo
 
 export function GroupedNotes({ notes, selectedId, select }: { notes: Note[]; selectedId?: string; select: (id: string) => void }) {
   return <div className="note-groups">{groupNotesByWebsiteAndDate(notes).map((website) => <section className="website-group" key={website.website}><h3>{website.website}</h3>{website.dates.map((date) => <div className="date-group" key={date.key}><h4>{date.label}</h4>{date.notes.map((note) => <NoteCard key={note.id} note={note} selected={selectedId === note.id} onClick={() => select(note.id)}/>)}</div>)}</section>)}</div>;
-}
-
-export function AINudge({ onTry, onDismiss }: { onTry: () => void; onDismiss: () => void }) {
-  return <aside className="ai-nudge" role="status" aria-label="Workpad AI suggestion"><button className="ai-nudge-close" aria-label="Dismiss AI suggestion" onClick={onDismiss}><X size={13}/></button><span className="ai-nudge-icon"><Sparkles size={16}/></span><div><strong>Want a faster way through this page?</strong><p>Summarise it, explain it, or pull out action points with Workpad AI.</p><button className="ai-nudge-action" onClick={onTry}><Sparkles size={13}/> Try AI on this page</button></div></aside>;
 }
 
 export function Editor({ note, edit, status, onAskPage, onExtractActions, onDraftReply, onShare, onAddToResearch, remove, duplicate }: { note: Note; edit: (changes: Partial<Note>) => void; status: string; onAskPage?: () => void; onExtractActions?: () => void; onDraftReply?: () => void; onShare?: () => void; onAddToResearch?: () => void; remove: () => void; duplicate: () => void }) {
@@ -332,9 +310,24 @@ export function EmptyState({ section, restricted, filtered = false, createNote }
   const page = section === "page"; return <div className="empty-state"><FilePlus2 size={22}/><strong>{filtered ? "No matching notes" : restricted && page ? "No page context available" : page ? "No notes for this site today" : "Nothing here yet"}</strong><p>{filtered ? "Try changing your search or filters." : restricted && page ? "Open a regular website to create linked notes." : page ? "Notes from this website will stay together for the day." : "Create a note to get started."}</p>{!filtered && !restricted && <button onClick={() => void createNote(page ? "page" : "standalone")}>{page ? "Add a note for this page" : "Create a note"}</button>}</div>;
 }
 
-function Onboarding({ step, setStep, done }: { step: number; setStep: (step: number) => void; done: () => void }) {
-  const copy = [["Your notebook beside every browser tab.", "Keep ideas, research and decisions in one calm place."], ["Create notes for the page you're viewing.", "Workpad remembers the context, so your notes are ready when you return."], ["Select text on any webpage and save it directly to Workpad.", "Use the right-click menu when something is worth keeping."]][step];
-  return <main className="onboarding"><span className="brand-mark"><PanelRight size={24}/></span><div><span className="eyebrow">WORKPAD · {step + 1}/3</span><h1>{copy[0]}</h1><p>{copy[1]}</p></div><div className="onboarding-actions">{step > 0 && <button className="secondary" onClick={() => setStep(step - 1)}><ChevronLeft size={16}/>Back</button>}<button className="text-button" onClick={done}>Skip</button><button onClick={step === 2 ? done : () => setStep(step + 1)}>{step === 2 ? "Start using Workpad" : "Next"}</button></div></main>;
+export function Onboarding({ step, setStep, done }: { step: number; setStep: (step: number) => void; done: () => void }) {
+  const [signingIn, setSigningIn] = useState(false);
+  const [error, setError] = useState("");
+  const copy = [
+    ["Your AI research assistant beside every tab.", "Summarise, question and compare what you read, with every claim linked back to its source."],
+    ["Collect sources as you browse.", "Save pages, selections and emails into a project, then ask across all of them or create a decision brief."],
+    ["Sign in to switch on Workpad AI.", "Your account includes a monthly allowance of AI credits. Page text is sent only when you choose an AI action."]
+  ][step];
+  const signIn = async () => {
+    setSigningIn(true); setError("");
+    try { await signInWithGoogle(); done(); }
+    catch (signInError) { setError(signInError instanceof Error ? signInError.message : "Sign-in failed. You can sign in later from Settings."); }
+    finally { setSigningIn(false); }
+  };
+  const canSignIn = step === 2 && isAccountConfigured();
+  return <main className="onboarding"><span className="brand-mark"><Sparkles size={22}/></span><div><span className="eyebrow">WORKPAD AI · {step + 1}/3</span><h1>{copy[0]}</h1><p>{copy[1]}</p>{error && <small className="account-error" role="alert">{error}</small>}</div><div className="onboarding-actions">{step > 0 && <button className="secondary" onClick={() => setStep(step - 1)}><ChevronLeft size={16}/>Back</button>}{canSignIn
+    ? <><button className="text-button" onClick={done}>Skip for now</button><button disabled={signingIn} onClick={() => void signIn()}>{signingIn ? "Signing in…" : "Sign in with Google"}</button></>
+    : <><button className="text-button" onClick={done}>Skip</button><button onClick={step === 2 ? done : () => setStep(step + 1)}>{step === 2 ? "Start using Workpad" : "Next"}</button></>}</div></main>;
 }
 
 function SettingsModal({ settings, update, close, notes }: { settings: Settings; update: (value: Partial<Settings>) => Promise<void>; close: () => void; notes: Note[] }) {

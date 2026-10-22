@@ -2,7 +2,7 @@
 
 Workpad is local-first. Note content, tags, settings, and backups are stored in your browser's IndexedDB on your device.
 
-Workpad does not use analytics or tracking, and it does not collect browser history. An account and cloud note sync are optional; Workpad remains usable without either.
+Workpad does not use analytics or tracking, and it does not collect browser history. Workpad AI requires a Workpad account. Notes, capture and research projects work without one, and cloud note sync is separately optional.
 
 ChocolateMinds operates Workpad and is the data controller for optional Workpad account and subscription data. Privacy requests can be sent to ai@chocolateminds.com.
 
@@ -12,7 +12,7 @@ Research projects are optional. When you choose **Research** on a page, email or
 
 Chrome may require additional page access after a tab navigates or when Workpad was not opened from its toolbar icon. In that case, Workpad asks you to grant optional access only to the current website. You can deny the request; AI page reading will remain unavailable for that site.
 
-AI features are optional and require a signed-in Workpad account. Nothing is sent merely by opening Workpad AI. When you choose an AI action, Workpad sends the source you chose (selected text or page text), the page title, a URL with its query string and fragment removed, and your chosen instruction to Workpad's AI service, which runs on Supabase. The service forwards that content to OpenAI's Responses API with `store: false` and a pseudonymous safety identifier derived from your account identifier. Workpad's AI service does not store the source text, instruction or AI result. To enforce plan limits it records, per account and month, the number of AI actions, token counts and credits used, plus short-lived request reservations and a per-minute request counter. AI results are stored in Workpad only when you choose **Save as note**. OpenAI's own API data controls and retention terms apply to that processing.
+Workpad AI requires a signed-in Workpad account. Nothing is sent merely by opening Workpad or Workpad AI. When you choose an AI action, Workpad sends the source you chose (selected text or page text), the page title, a URL with its query string and fragment removed, and your chosen instruction to Workpad's AI service, which runs on Supabase. The service forwards that content to OpenAI's Responses API with `store: false` and a pseudonymous safety identifier derived from your account identifier. Workpad's AI service does not store the source text, instruction or AI result. To enforce plan limits it records, per account and month, the number of AI actions, token counts and credits used, plus short-lived request reservations and a per-minute request counter. AI results are stored in Workpad only when you choose **Save as note**. OpenAI's own API data controls and retention terms apply to that processing.
 
 Production builds may offer optional Workpad accounts. If you sign in, Supabase processes your email address, user identifier, authentication session, plan and entitlement information, and Workpad AI usage counts. Authentication access tokens are held in Chrome session storage; the refresh token is held in Chrome local storage so you can remain signed in. Signing in alone does not upload notes.
 

@@ -1,6 +1,6 @@
 # Workpad
 
-Workpad is a local-first contextual notebook that lives in Chrome's side panel. It keeps page research and general notes beside the website where they matter.
+Workpad is an AI research assistant that lives in Chrome's side panel. It summarises and answers questions about the page you're on, collects sources into research projects, and turns them into cited decision briefs. Notes and sources are stored on your device; page text is sent to Workpad AI only when you choose an AI action.
 
 ## Features
 
