@@ -39,14 +39,22 @@ export class AIRequestError extends Error {
 const REQUEST_TIMEOUT_MS = 70_000;
 const knownCodes = new Set<AIErrorCode>(["unauthenticated", "quota_exceeded", "rate_limited", "busy", "source_too_large", "ai_disabled", "output_limit"]);
 
+/** Splits combined citations such as [S1:P2, S3:P4] into [S1:P2] [S3:P4]. */
+export function separateCitations(result: string): string {
+  return result.replace(/\[((?:S\d+:)?P\d+(?:\s*[,;]\s*(?:S\d+:)?P\d+)+)\]/g, (_, labels: string) => labels.split(/\s*[,;]\s*/).map((label) => `[${label}]`).join(" "));
+}
+
+/** Checks citations against the passages that were sent: [P#] for a page, [S#:P#] for project sources. */
 export function validateEvidenceCitations(result: string, source: string): string {
-  const available = new Set(Array.from(source.matchAll(/^\[(P\d+)\]\s/gm), (match) => match[1]));
+  const available = new Set(Array.from(source.matchAll(/^\[((?:S\d+:)?P\d+)\]\s/gm), (match) => match[1]));
+  const where = Array.from(available).some((id) => id.includes(":")) ? "the sources" : "the page";
   if (!available.size) throw new Error("No traceable evidence passages were available for this page.");
-  const cited = Array.from(result.matchAll(/\[(P\d+)\]/g), (match) => match[1]);
+  const text = separateCitations(result);
+  const cited = Array.from(text.matchAll(/\[((?:S\d+:)?P\d+)\]/g), (match) => match[1]);
   if (!cited.length) throw new Error("The answer did not cite its evidence. Please try again.");
   const unknown = Array.from(new Set(cited.filter((id) => !available.has(id))));
-  if (unknown.length) throw new Error(`The answer cited evidence that was not in the page (${unknown.map((id) => `[${id}]`).join(", ")}). Please try again.`);
-  return result;
+  if (unknown.length) throw new Error(`The answer cited evidence that was not in ${where} (${unknown.map((id) => `[${id}]`).join(", ")}). Please try again.`);
+  return text;
 }
 
 async function requireSession(): Promise<AccountSession> {

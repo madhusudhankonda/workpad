@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { ExternalLink, FileText, FolderOpen, FolderPlus, Mail, NotebookPen, Plus, Sparkles, TextSelect, Trash2, X } from "lucide-react";
+import { ExternalLink, FileText, FolderOpen, FolderPlus, Mail, MessagesSquare, NotebookPen, Plus, Sparkles, TextSelect, Trash2, X } from "lucide-react";
 import { MAX_PROJECT_DESCRIPTION_LENGTH, MAX_PROJECT_NAME_LENGTH, projectsRepository, type ProjectSummary } from "../db/repositories/projectsRepository";
 import { sourcesRepository } from "../db/repositories/sourcesRepository";
 import type { ResearchSource, ResearchSourceType } from "../types";
+import { ResearchQuestion } from "./ResearchQuestion";
+import { splitAtPassage } from "../utils/passages";
 
 const shortDate = (value: string) => new Date(value).toLocaleDateString(undefined, { day: "numeric", month: "short" });
 const sourceTypes: Record<ResearchSourceType, { label: string; icon: typeof FileText }> = {
@@ -66,6 +68,7 @@ function ProjectDetail({ project, onChanged, onDeleted }: { project: ProjectSumm
   const [error, setError] = useState("");
   const [sources, setSources] = useState<ResearchSource[]>();
   const [viewing, setViewing] = useState<ResearchSource>();
+  const [asking, setAsking] = useState(false);
 
   useEffect(() => { void sourcesRepository.listForProject(project.id).then(setSources); }, [project.id]);
   const removeSource = async (source: ResearchSource) => {
@@ -96,6 +99,7 @@ function ProjectDetail({ project, onChanged, onDeleted }: { project: ProjectSumm
     <input className="title-input" aria-label="Project name" maxLength={MAX_PROJECT_NAME_LENGTH} value={name} onChange={(event) => setName(event.target.value)} onBlur={() => void save({ name })} onKeyDown={(event) => { if (event.key === "Enter") event.currentTarget.blur(); }}/>
     <textarea className="project-description" aria-label="Project description" placeholder="What decision is this research for?" rows={3} maxLength={MAX_PROJECT_DESCRIPTION_LENGTH} value={description} onChange={(event) => setDescription(event.target.value)} onBlur={() => void save({ description })}/>
     {error && <small className="project-error" role="alert">{error}</small>}
+    {sources && sources.length > 0 && <button className="ask-sources" onClick={() => setAsking(true)}><MessagesSquare size={14}/>Ask across sources</button>}
     {sources && (sources.length
       ? <div className="source-list" aria-label="Sources">{sources.map((source) => {
           const type = sourceTypes[source.sourceType];
@@ -106,15 +110,19 @@ function ProjectDetail({ project, onChanged, onDeleted }: { project: ProjectSumm
         })}</div>
       : <div className="empty-state project-sources-empty"><FolderOpen size={22}/><strong>No sources yet</strong><p>Use Research on a page, email or note to add it here.</p></div>)}
     {viewing && <SnapshotViewer source={viewing} onClose={() => setViewing(undefined)} onRemove={() => void removeSource(viewing)}/>}
+    {asking && sources && <ResearchQuestion project={project} sources={sources} onClose={() => setAsking(false)} onSaved={async () => { setSources(await sourcesRepository.listForProject(project.id)); await onChanged(); }}/>}
   </div>;
 }
 
 /** Shows exactly what was captured, when, and from where. */
-export function SnapshotViewer({ source, onClose, onRemove }: { source: ResearchSource; onClose: () => void; onRemove?: () => void }) {
+export function SnapshotViewer({ source, onClose, onRemove, highlight, heading }: { source: ResearchSource; onClose: () => void; onRemove?: () => void; highlight?: string; heading?: string }) {
   const type = sourceTypes[source.sourceType];
+  const parts = highlight ? splitAtPassage(source.snapshotText, highlight) : undefined;
+  const markRef = useRef<HTMLElement>(null);
+  useEffect(() => { markRef.current?.scrollIntoView?.({ block: "center" }); }, [highlight]);
   return <div className="modal-backdrop" role="presentation">
     <section className="modal research-modal" role="dialog" aria-modal="true" aria-label={`Snapshot: ${source.title}`}>
-      <header><h2>{source.title}</h2><button aria-label="Close snapshot" onClick={onClose}><X size={18}/></button></header>
+      <header><h2>{heading ?? source.title}</h2><button aria-label="Close snapshot" onClick={onClose}><X size={18}/></button></header>
       <div className="modal-scroll">
         <dl className="snapshot-meta">
           <div><dt>Type</dt><dd>{type.label}{source.version > 1 ? ` · version ${source.version}` : ""}</dd></div>
@@ -122,7 +130,7 @@ export function SnapshotViewer({ source, onClose, onRemove }: { source: Research
           {source.url && <div><dt>From</dt><dd>{isWebUrl(source.url) ? <a href={source.url} target="_blank" rel="noreferrer">{source.domain || source.url} <ExternalLink size={11}/></a> : source.domain || source.url}</dd></div>}
         </dl>
         {source.snapshotTruncated && <p className="snapshot-note">This source was long, so Workpad stored its start and end and shortened the middle.</p>}
-        <pre className="snapshot-text" aria-label="Captured text">{source.snapshotText}</pre>
+        <pre className="snapshot-text" aria-label="Captured text">{parts ? <>{parts[0]}<mark ref={markRef} className="snapshot-highlight">{parts[1]}</mark>{parts[2]}</> : source.snapshotText}</pre>
         <p className="snapshot-note">This is the text as captured. Later changes to the original are not reflected here.</p>
       </div>
       {onRemove && <footer className="research-footer"><button className="danger-button" onClick={onRemove}><Trash2 size={14}/>Remove from project</button><button className="secondary" onClick={onClose}>Close</button></footer>}
