@@ -4,7 +4,7 @@ import { projectsRepository, type ProjectSummary } from "../db/repositories/proj
 import { sourcesRepository, type AddSourceStatus } from "../db/repositories/sourcesRepository";
 import { captureEmailDraft, capturePageDrafts, noteDraft, type CaptureDraft } from "../services/researchCapture";
 import { PageAccessError, requestPageAccess } from "../services/pageContent";
-import type { Note } from "../types";
+import type { Note, ResearchSource } from "../types";
 import { ProjectPicker } from "./ProjectsPanel";
 
 export type CaptureRequest = { kind: "page" } | { kind: "email" } | { kind: "note"; note: Note };
@@ -39,7 +39,17 @@ export function AddToResearch({ request, removeTracking, onClose, onOpenProject,
   const [accessUrl, setAccessUrl] = useState("");
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState<{ status: AddSourceStatus; projectId: string; projectName: string }>();
+  const [existing, setExisting] = useState<{ projectId: string; sources: ResearchSource[] }>();
   const draft = useSelection && drafts?.selection ? drafts.selection : drafts?.primary;
+  const projectSources = existing && existing.projectId === projectId ? existing.sources : undefined;
+  const earlier = draft?.versionKey ? projectSources?.filter((source) => source.versionKey === draft.versionKey).sort((a, b) => b.version - a.version)[0] : undefined;
+
+  useEffect(() => {
+    if (!projectId) return;
+    let active = true;
+    void sourcesRepository.listForProject(projectId).then((sources) => { if (active) setExisting({ projectId, sources }); });
+    return () => { active = false; };
+  }, [projectId]);
 
   const read = async (askForAccess = false) => {
     setError("");
@@ -98,6 +108,12 @@ export function AddToResearch({ request, removeTracking, onClose, onOpenProject,
               </div>
               <h3 className="research-step">2. Choose a project</h3>
               <ProjectPicker projects={projects} selectedId={projectId} onSelect={setProjectId} onCreate={createProject}/>
+              {projectSources && <div className="project-contents" aria-label="Sources already in this project">
+                {earlier && <p className="project-contents-note" role="note">An earlier capture of this {draft?.sourceType === "email" ? "email" : draft?.sourceType === "page" ? "page" : "note"} from {new Date(earlier.capturedAt).toLocaleDateString(undefined, { day: "numeric", month: "short" })} is already here. If the text has changed, adding it creates version {earlier.version + 1} and keeps the earlier one.</p>}
+                <strong>{projectSources.length ? `Already in ${projects.find((project) => project.id === projectId)?.name ?? "this project"} (${projectSources.length})` : "This project has no sources yet."}</strong>
+                {projectSources.length > 0 && <ul>{projectSources.slice(0, 6).map((source) => <li key={source.id} title={source.title}>{source.title}{source.version > 1 ? ` · v${source.version}` : ""}{source.domain ? <small> · {source.domain}</small> : null}</li>)}</ul>}
+                {projectSources.length > 6 && <small>and {projectSources.length - 6} more</small>}
+              </div>}
             </>}
           </>}
       </div>
