@@ -106,8 +106,8 @@
       </p>
       <p>
         Workpad AI requires a signed-in Workpad account. Nothing is sent merely by opening
-        Workpad or Workpad AI. When you choose an AI action, Workpad sends the source you chose, the page
-        title, a URL with its query and fragment removed, and your instruction to Workpad’s AI service,
+        Workpad or Workpad AI. When you choose an AI action, Workpad sends the source you chose (selected text, page text, or the text
+        of a saved note you ask about), its title, a URL with its query and fragment removed, and your instruction to Workpad’s AI service,
         which runs on Supabase. The service forwards that content to OpenAI’s Responses API with
         <code>store: false</code> and a pseudonymous safety identifier derived from your account
         identifier. Workpad’s AI service does not store the source text, instruction or result. To enforce
