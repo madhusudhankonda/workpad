@@ -1,4 +1,5 @@
 import { adminRequest, json, requiredEnv, stripeRequest } from "../_shared/http.ts";
+import { subscriptionFields } from "../_shared/stripe.ts";
 
 const encoder = new TextEncoder();
 
@@ -30,18 +31,13 @@ async function syncSubscription(subscriptionId: string, knownUserId?: string): P
   const metadata = subscription.metadata as Record<string, string> | undefined;
   const userId = knownUserId || metadata?.supabase_user_id || await userForCustomer(customerId);
   if (!userId) throw new Error("No Workpad user mapped to Stripe subscription");
-  const items = subscription.items as { data?: Array<{ price?: { id?: string }; current_period_end?: number }> } | undefined;
-  const periodEnd = Number(subscription.current_period_end ?? items?.data?.[0]?.current_period_end ?? 0);
   await adminRequest("subscriptions?on_conflict=user_id", {
     method: "POST",
     headers: { Prefer: "resolution=merge-duplicates,return=minimal" },
     body: JSON.stringify({
       user_id: userId,
       stripe_subscription_id: String(subscription.id),
-      status: String(subscription.status),
-      price_id: items?.data?.[0]?.price?.id,
-      current_period_end: periodEnd ? new Date(periodEnd * 1_000).toISOString() : null,
-      cancel_at_period_end: Boolean(subscription.cancel_at_period_end),
+      ...subscriptionFields(subscription),
       updated_at: new Date().toISOString()
     })
   });
