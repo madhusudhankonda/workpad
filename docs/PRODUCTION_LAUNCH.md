@@ -2,7 +2,7 @@
 
 The order of work to take Workpad from `workpad-dev` to an unlisted Chrome Web Store release. [PRODUCTION.md](PRODUCTION.md) explains each component; this file is the checklist. **Owner** is who does the step: *You* for anything needing your accounts, payment or secrets; *Claude* for repository, migration and deploy work once you have given access.
 
-Status as of 22 October 2026: all code for hosted AI, research projects, decision briefs and backup version 2 is on `main` and running against `workpad-dev`. Nothing production exists yet.
+Status as of 23 October 2026: production Supabase is `workpad` (`wamtehiigikrvtnvshov`, London). A1, A6 and A7 are done: all six migrations are applied with access rules verified, all six Edge Functions are deployed, and the production Pro allowance is set to 200 credits (free 30). No OpenAI, Stripe or Google secrets are set on production yet.
 
 ## Decisions
 
