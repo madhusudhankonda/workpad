@@ -2,12 +2,16 @@ import { readFile } from "node:fs/promises";
 import { spawn } from "node:child_process";
 import { resolve } from "node:path";
 
+// WORKPAD_DB_TARGET=prod reads the production password, so dev and production passwords are never mixed up.
+const target = process.env.WORKPAD_DB_TARGET === "prod" ? "prod" : "dev";
+const passwordVariable = target === "prod" ? "SUPABASE_PROD_DB_PASSWORD" : "SUPABASE_DB_PASSWORD";
 const envFile = await readFile(resolve(".env.local"), "utf8");
-const matches = envFile.split(/\r?\n/).filter((line) => line.startsWith("SUPABASE_DB_PASSWORD="));
-if (matches.length !== 1) throw new Error(".env.local must contain exactly one SUPABASE_DB_PASSWORD entry.");
-let password = matches[0].slice("SUPABASE_DB_PASSWORD=".length).trim();
+const matches = envFile.split(/\r?\n/).filter((line) => line.startsWith(`${passwordVariable}=`));
+if (matches.length !== 1) throw new Error(`.env.local must contain exactly one ${passwordVariable} entry.`);
+let password = matches[0].slice(`${passwordVariable}=`.length).trim();
 if ((password.startsWith('"') && password.endsWith('"')) || (password.startsWith("'") && password.endsWith("'"))) password = password.slice(1, -1);
-if (!password) throw new Error("SUPABASE_DB_PASSWORD is empty.");
+if (!password) throw new Error(`${passwordVariable} is empty.`);
+console.error(`Using the ${target} database password (${passwordVariable}).`);
 const args = process.argv.slice(2);
 if (!args.length) throw new Error("Provide a Supabase database command.");
 

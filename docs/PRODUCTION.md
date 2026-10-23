@@ -5,7 +5,14 @@ Workpad keeps local notes independent from its optional account and billing serv
 ## 1. Supabase
 
 1. Create separate staging and production Supabase projects.
-2. Apply every migration in `supabase/migrations` in filename order with the Supabase CLI.
+2. Apply every migration in `supabase/migrations` in filename order with the Supabase CLI. `scripts/supabase-db.mjs` wraps the CLI and reads the database password from `.env.local`: `SUPABASE_DB_PASSWORD` for workpad-dev, or `SUPABASE_PROD_DB_PASSWORD` when run with `WORKPAD_DB_TARGET=prod`. Link to production only for the operation, then link back to workpad-dev:
+
+   ```bash
+   WORKPAD_DB_TARGET=prod node scripts/supabase-db.mjs link --project-ref wamtehiigikrvtnvshov
+   WORKPAD_DB_TARGET=prod node scripts/supabase-db.mjs db push --linked --dry-run
+   WORKPAD_DB_TARGET=prod node scripts/supabase-db.mjs db push --linked
+   node scripts/supabase-db.mjs link --project-ref enjovhkplwttmzaexair
+   ```
 3. In Google Auth Platform, create a Web application OAuth client for each environment. Add the Supabase callback and the exact `https://<extension-id>.chromiumapp.org/` callback as authorized redirect URIs.
 4. Put the public Web client ID and the `openid`, `email`, and `profile` scopes in the extension manifest's `oauth2` section. Keep its secret only in Supabase.
 5. Enable Google Auth in Supabase with the same Web client ID and secret.
