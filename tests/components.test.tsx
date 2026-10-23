@@ -58,6 +58,14 @@ describe("side panel components", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save email" }));
     expect(saveEmail).toHaveBeenCalledOnce();
   });
+  it("offers Ask about this note once the note has content", () => {
+    const ask = vi.fn();
+    const { rerender } = render(<Editor note={{ ...note, content: "" }} edit={vi.fn()} status="saved" onAskAboutNote={ask} remove={vi.fn()} duplicate={vi.fn()} />);
+    expect(screen.queryByRole("button", { name: "Ask about this note" })).not.toBeInTheDocument();
+    rerender(<Editor note={note} edit={vi.fn()} status="saved" onAskAboutNote={ask} remove={vi.fn()} duplicate={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "Ask about this note" }));
+    expect(ask).toHaveBeenCalledOnce();
+  });
   it("does not repeat Ask this page inside a new note", () => {
     render(<Editor note={{ ...note, title: "", content: "" }} edit={vi.fn()} status="saved" remove={vi.fn()} duplicate={vi.fn()} />);
     expect(screen.queryByRole("button", { name: /Ask this/ })).not.toBeInTheDocument();

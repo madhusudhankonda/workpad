@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AIWorkspace, MarkdownResult } from "../src/sidepanel/AIWorkspace";
 import type { Settings } from "../src/types";
@@ -108,6 +108,32 @@ describe("AI workspace", () => {
     render(<AIWorkspace settings={settings} onClose={vi.fn()} onSave={vi.fn()}/>);
     expect(await screen.findByText("You have used this month's AI credits")).toBeInTheDocument();
     expect(screen.getByText("Summarize").closest("button")).toBeDisabled();
+  });
+
+  it("asks about a saved note without reading the page", async () => {
+    const executeScript = vi.fn();
+    vi.stubGlobal("chrome", { tabs: { query: vi.fn() }, scripting: { executeScript }, storage: signedInStorage() });
+    const fetchMock = vi.spyOn(globalThis, "fetch").mockImplementation(async (input) => String(input).includes("get_my_ai_usage")
+      ? new Response(JSON.stringify([usageRow]), { status: 200 })
+      : new Response(JSON.stringify({ text: "Four people signed up [P1].", model: "m", truncated: false }), { status: 200 }));
+    const save = vi.fn().mockResolvedValue(undefined);
+    render(<AIWorkspace settings={settings} onClose={vi.fn()} onSave={save} noteSource={{ title: "Signups", content: "Ana signed up today.\n\nBen signed up yesterday." }}/>);
+
+    expect(screen.getByRole("heading", { name: "Ask about this note." })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Full page/ })).not.toBeInTheDocument();
+    await screen.findByText("Workpad AI · 26 of 30 credits left");
+    fireEvent.click(screen.getByText("Summarize").closest("button")!);
+
+    expect(await screen.findByText(/Four people signed up/)).toBeInTheDocument();
+    expect(executeScript).not.toHaveBeenCalled();
+    const body = JSON.parse(String((fetchMock.mock.calls.find(([input]) => String(input).endsWith("/ai-proxy"))![1] as RequestInit).body));
+    expect(body).toMatchObject({ action: "summary", pageTitle: "Signups", pageUrl: "" });
+    expect(body.source).toContain("[P1] Ana signed up today.");
+
+    fireEvent.click(screen.getByRole("button", { name: "[P1]" }));
+    expect(screen.getByRole("status")).toHaveTextContent("P1 in your note: “Ana signed up today.”");
+    fireEvent.click(screen.getByRole("button", { name: "Save as note" }));
+    await waitFor(() => expect(save).toHaveBeenCalledWith(expect.objectContaining({ content: expect.stringContaining("Source: Workpad note “Signups”") })));
   });
 
   it("renders AI Markdown as structured content", () => {
