@@ -13,3 +13,6 @@ videos/
 snapshots/
 renders/
 supabase/.temp/
+
+# Raw store captures can contain personal notes; only framed screenshots are committed.
+store-assets/raw/

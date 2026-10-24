@@ -1,0 +1,43 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  html, body { margin: 0; width: 1400px; height: 560px; overflow: hidden; }
+  body { font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; color: #fff;
+    background: radial-gradient(circle at 70% 0%, #8a94f5 0%, transparent 40%), linear-gradient(145deg, #5e69df 0%, #5b4bc2 100%); }
+  .copy { position: absolute; left: 90px; top: 92px; width: 640px; }
+  .brand { display: flex; align-items: center; gap: 16px; }
+  .brand img { width: 76px; height: 76px; margin: -12px; }
+  .brand span { font-size: 40px; font-weight: 750; letter-spacing: -.8px; }
+  h1 { margin: 40px 0 0; font-size: 58px; line-height: 1.06; font-weight: 780; letter-spacing: -1.4px; }
+  p { margin: 24px 0 0; font-size: 22px; line-height: 1.45; color: #e4e6ff; }
+  .panel { position: absolute; right: 90px; top: 50%; transform: translateY(-50%); width: 470px; border-radius: 20px; background: #fff; color: #20212a;
+    box-shadow: 0 30px 70px rgba(25, 18, 80, .45); padding: 26px 28px; box-sizing: border-box; }
+  .kicker { font-size: 13px; font-weight: 700; letter-spacing: .8px; color: #5b4bc2; }
+  .q { margin-top: 12px; font-size: 21px; font-weight: 700; letter-spacing: -.3px; }
+  .a { margin-top: 18px; font-size: 16px; line-height: 1.6; color: #3a3a44; }
+  .a li { margin-bottom: 10px; }
+  .a ul { padding-left: 20px; margin: 0; }
+  .c { display: inline-block; padding: 0 7px; border-radius: 6px; background: #ececf3; color: #5b4bc2; font-size: 13px; font-weight: 700; }
+  .ev { margin-top: 14px; padding: 14px 16px; border-radius: 12px; background: #f4f3ff; border-left: 4px solid #5e69df; font-size: 14px; line-height: 1.5; color: #3b3950; }
+</style>
+</head>
+<body>
+  <div class="copy">
+    <div class="brand"><img src="../icon-128.png" alt=""><span>Workpad</span></div>
+    <h1>Research in your side panel, with every claim cited.</h1>
+    <p>Ask about any page, collect sources into projects and turn them into a decision brief.</p>
+  </div>
+  <div class="panel">
+    <div class="kicker">ASK ACROSS 3 SOURCES</div>
+    <div class="q">Which vendor fits a 10-person team under £500 a month?</div>
+    <div class="a"><ul>
+      <li>Vendor A's annual plan stays under budget at 10 seats <span class="c">S1:P3</span></li>
+      <li>Vendor B includes onboarding but caps automation <span class="c">S2:P1</span></li>
+      <li>Both offer UK data residency <span class="c">S3:P2</span></li>
+    </ul></div>
+    <div class="ev"><b>S1:P3</b> · “The annual plan is £39 per seat per month…”</div>
+  </div>
+</body>
+</html>

@@ -6,7 +6,7 @@
 npm run package:release
 ```
 
-Upload `workpad-0.1.0.zip` to the Chrome Web Store Developer Dashboard. The ZIP must contain the files inside `dist`, with `manifest.json` at its root.
+Upload the `workpad-<version>.zip` attached to the GitHub release to the Chrome Web Store Developer Dashboard. The ZIP must contain the files inside `dist`, with `manifest.json` at its root.
 
 ## Listing copy
 
@@ -32,15 +32,28 @@ Workpad is an AI research assistant in Chrome's side panel. Summarise and questi
 
 ## Store assets
 
-- `public/icons/icon-128.png`: Chrome Web Store extension icon.
-- `store-assets/small-promo-440x280.png`: required 440×280 promotional image. Store artwork is intentionally excluded from the extension ZIP.
-- Capture at least one **real** extension screenshot after loading the production build. Chrome accepts 1280×800 or 640×400 screenshots. Do not use the promotional illustration as a screenshot.
+**Category:** Workflow & Planning. **Language:** English (United Kingdom).
 
-Suggested screenshots:
+| Store field | File | Format |
+| --- | --- | --- |
+| Store icon | `store-assets/icon-128.png` | 128×128, 96×96 artwork with transparent padding |
+| Screenshots | `store-assets/screenshots/*.png` | 1280×800, 24-bit PNG without alpha |
+| Small promo tile | `store-assets/small-promo-440x280.png` | 440×280, 24-bit PNG without alpha |
+| Marquee promo tile | `store-assets/marquee-promo-1400x560.png` | 1400×560, 24-bit PNG without alpha |
 
-1. Workpad side panel next to a normal webpage, showing the context banner and note list.
-2. Note editor with tags, a page-note indicator, and saved status.
-3. Settings or context-menu capture result.
+Store artwork is excluded from the extension ZIP. The icon and tiles are rendered from HTML in `store-assets/src` with headless Chrome:
+
+```bash
+sh scripts/render-store-assets.sh
+```
+
+Screenshots must show the **real** extension. Load the production build, then capture the side panel (Cmd+Shift+4, then Space, then click the panel) for each entry in `store-assets/screenshots.json`, saving it under `store-assets/raw/` with the listed file name. Use sample content, not personal notes. Then frame them into 1280×800 screenshots with their captions:
+
+```bash
+sh scripts/frame-screenshots.sh
+```
+
+`store-assets/raw/` is git-ignored. Do not use the promo tiles as screenshots.
 
 ## Privacy and permissions disclosure
 
