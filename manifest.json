@@ -2,6 +2,7 @@
   "manifest_version": 3,
   "name": "Workpad",
   "version": "0.1.0",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAy+QCD8RM/aoNEcj69VpTNDOcSJ5dq9ApjKqX4Z52KYY716dahoCuREVA+HGxgtn/ggZtZQrTIVvg35fXKlEQ72xEZgFq4zdqME//eWfckzAPi4dKrlU2cskVBcWcJhW6yTMWPVJgcT9W1Dxy0lUf37+sEpbLcWEHg2jC7FLYaWuG67+mKCIYNeLAA8MFasEhDGNFdIoQniWrDWJqNNl3uwuV+Zk+SvjF9dt+Ks1ul17zfgM4esOwkY8lJLC8vGh2yeNdoY5SQl+Gx/wIpMl+6ukMQT9vgukEpEOaQ/6hiZe3l2RBGEDoofMoxMbcRYGhBplmjmHXUWlv2BbPJ4cKFQIDAQAB",
   "description": "AI research assistant beside every tab: ask about any page, collect sources and decide with cited evidence.",
   "icons": {
     "16": "icons/icon-16.png",
