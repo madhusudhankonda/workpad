@@ -1,7 +1,7 @@
 [
-  { "file": "1-ask-page.png", "title": "Ask about the page you're on.", "subtitle": "Summarise, explain or question any article. Click a citation to see the passage it came from." },
-  { "file": "2-research-project.png", "title": "Collect sources into projects.", "subtitle": "Save pages, selections and emails as research sources that stay on your device." },
-  { "file": "3-ask-sources.png", "title": "Ask across your sources.", "subtitle": "Answers cite each claim back to a source and passage, like [S2:P4]." },
-  { "file": "4-decision-brief.png", "title": "Turn research into a decision brief.", "subtitle": "Findings, options, risks and a recommendation, each one cited." },
-  { "file": "5-notes.png", "title": "Keep notes beside every page.", "subtitle": "Quote a selection, tag it and come back to it later." }
+  { "file": "1-cited-answer.png", "title": "Answers with every claim cited.", "subtitle": "Each point links to the passage it came from, like [S3:P21]. Click to check it." },
+  { "file": "2-ask-sources.png", "title": "Ask across your sources.", "subtitle": "Pick the sources to include. Workpad answers only from them." },
+  { "file": "3-research-project.png", "title": "Collect sources into projects.", "subtitle": "Save pages, selections and emails as you browse, then ask across them or create a decision brief." },
+  { "file": "4-ask-page.png", "title": "Ask about the page you're on.", "subtitle": "Summarise, explain, translate or question any page. Text is sent only when you choose." },
+  { "file": "5-account.png", "title": "Free to start. Pro for £1.99 a month.", "subtitle": "A monthly allowance of AI credits, with more credits and cloud sync on Pro." }
 ]
