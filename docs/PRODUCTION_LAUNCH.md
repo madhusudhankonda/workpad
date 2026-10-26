@@ -2,7 +2,7 @@
 
 The order of work to take Workpad from `workpad-dev` to an unlisted Chrome Web Store release. [PRODUCTION.md](PRODUCTION.md) explains each component; this file is the checklist. **Owner** is who does the step: *You* for anything needing your accounts, payment or secrets; *Claude* for repository, migration and deploy work once you have given access.
 
-Status as of 24 October 2026: Workpad 0.1.1 is **submitted to the Chrome Web Store for Unlisted review**. Production runs on Supabase `workpad` (`wamtehiigikrvtnvshov`, London) with Google sign-in, Workpad AI and live Stripe billing working end to end. The store extension ID is `fjkidcpbclhdbnignknhkbmlmpcpgaad`. Before inviting testers: confirm the OpenAI budget and test account deletion on production.
+Status as of 24 October 2026: Workpad 0.1.1 is **submitted to the Chrome Web Store for Unlisted review**. Production runs on Supabase `workpad` (`wamtehiigikrvtnvshov`, London) with Google sign-in, Workpad AI and live Stripe billing working end to end. The store extension ID is `fjkidcpbclhdbnignknhkbmlmpcpgaad`. Before inviting testers: confirm the OpenAI budget.
 
 ## Decisions
 
@@ -38,7 +38,7 @@ Stripe test mode was skipped: the live account was configured directly and teste
 | B1 | Set the production allowances in `ai_plan_limits`, and match `src/config/pricing.ts` and the Pro offer copy to the price. | Claude | Done: Pro 200, free 30, £1.99 |
 | B2 | In Stripe **live** mode: Workpad Pro product and GBP price, Customer Portal (cancel, payment method, invoices), webhook endpoint `https://wamtehiigikrvtnvshov.supabase.co/functions/v1/stripe-webhook` with the six events in PRODUCTION.md, and the four Stripe secrets on production (restricted key). | You | Done |
 | B3 | Billing acceptance on production: checkout, cancellation, refund and webhook delivery. | You + Claude | Done; cancellation exposed the `cancel_at` bug, fixed in #32 |
-| B4 | Remaining acceptance: failed payment, duplicate webhook delivery, and account deletion removing the Stripe customer and all rows. | You + Claude | **Open**: test Delete account with a throwaway account |
+| B4 | Remaining acceptance: failed payment, duplicate webhook delivery, and account deletion removing the Stripe customer and all rows. | You + Claude | Account deletion verified on production 26 Oct: the user, all user rows and the Stripe customer were removed. **Open:** failed payment and duplicate webhook delivery (not blocking a small beta) |
 | B5 | VAT: add Stripe Tax to checkout if the VAT decision requires it. | Claude | Not needed for UK sales; revisit if EU sales are handled |
 
 ## Phase C: release
@@ -49,7 +49,7 @@ Stripe test mode was skipped: the live account was configured directly and teste
 | C2 | Upload the ZIP, complete the listing from [CHROME_WEB_STORE.md](CHROME_WEB_STORE.md) with the assets in `store-assets/`, add the permission justifications and single purpose, set visibility to **Unlisted** and submit. | You | Done: submitted 24 Oct |
 | C3 | Privacy practices disclosures: **website content**, **personal communications**, **personally identifiable information** and **authentication information**; not sold, not used for unrelated purposes or creditworthiness; remote code: none. | You | Done |
 | C4 | After approval: export a backup from the unpacked install, remove it, install from the store, sign in, import the backup, then run AI, research, a brief, backup export/import, checkout and the billing portal end to end. If publishing was deferred, click Publish within 30 days of approval. | You | Waiting for review |
-| C5 | Invite the first 10–20 testers with the unlisted link. | You | After C4 and B4 |
+| C5 | Invite the first 10–20 testers with the unlisted link. | You | After C4 and A5 |
 
 ## Known gaps to accept or fix before inviting testers
 
