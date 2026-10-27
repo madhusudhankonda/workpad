@@ -2,7 +2,7 @@
 
 The order of work to take Workpad from `workpad-dev` to an unlisted Chrome Web Store release. [PRODUCTION.md](PRODUCTION.md) explains each component; this file is the checklist. **Owner** is who does the step: *You* for anything needing your accounts, payment or secrets; *Claude* for repository, migration and deploy work once you have given access.
 
-Status as of 27 October 2026: Workpad 0.1.1 is **published unlisted** (approved by 26 October) and **submitted for Public review** on 27 October, with the listing marked as containing in-app purchases. Production runs on Supabase `workpad` (`wamtehiigikrvtnvshov`, London) with Google sign-in, Workpad AI and live Stripe billing working end to end. The store extension ID is `fjkidcpbclhdbnignknhkbmlmpcpgaad`. Every step that blocked inviting testers is done.
+Status as of 27 October 2026: Workpad 0.1.1 is **published publicly** on the Chrome Web Store (approved 27 October), with the listing marked as containing in-app purchases. Production runs on Supabase `workpad` (`wamtehiigikrvtnvshov`, London) with Google sign-in, Workpad AI and live Stripe billing working end to end. The store extension ID is `fjkidcpbclhdbnignknhkbmlmpcpgaad`. Every step that blocked inviting testers is done.
 
 ## Decisions
 
@@ -50,7 +50,7 @@ Stripe test mode was skipped: the live account was configured directly and teste
 | C3 | Privacy practices disclosures: **website content**, **personal communications**, **personally identifiable information** and **authentication information**; not sold, not used for unrelated purposes or creditworthiness; remote code: none. | You | Done |
 | C4 | After approval: export a backup from the unpacked install, remove it, install from the store, sign in, import the backup, then run AI, research, a brief, backup export/import, checkout and the billing portal end to end. If publishing was deferred, click Publish within 30 days of approval. | You | Done: store install verified 26 Oct |
 | C5 | Invite the first 10–20 testers with the unlisted link. | You | Started 26 Oct |
-| C6 | Set Payments to **Contains in-app purchases**, set visibility to **Public** and submit for review. | You | Submitted 27 Oct; waiting for review |
+| C6 | Set Payments to **Contains in-app purchases**, set visibility to **Public** and submit for review. | You | Done: published public 27 Oct |
 
 ## Known gaps to accept or fix before inviting testers
 
