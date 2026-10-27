@@ -2,7 +2,7 @@
 
 The order of work to take Workpad from `workpad-dev` to an unlisted Chrome Web Store release. [PRODUCTION.md](PRODUCTION.md) explains each component; this file is the checklist. **Owner** is who does the step: *You* for anything needing your accounts, payment or secrets; *Claude* for repository, migration and deploy work once you have given access.
 
-Status as of 24 October 2026: Workpad 0.1.1 is **submitted to the Chrome Web Store for Unlisted review**. Production runs on Supabase `workpad` (`wamtehiigikrvtnvshov`, London) with Google sign-in, Workpad AI and live Stripe billing working end to end. The store extension ID is `fjkidcpbclhdbnignknhkbmlmpcpgaad`. Before inviting testers: confirm the OpenAI budget.
+Status as of 27 October 2026: Workpad 0.1.1 is **published unlisted** (approved by 26 October) and **submitted for Public review** on 27 October, with the listing marked as containing in-app purchases. Production runs on Supabase `workpad` (`wamtehiigikrvtnvshov`, London) with Google sign-in, Workpad AI and live Stripe billing working end to end. The store extension ID is `fjkidcpbclhdbnignknhkbmlmpcpgaad`. Every step that blocked inviting testers is done.
 
 ## Decisions
 
@@ -23,7 +23,7 @@ Status as of 24 October 2026: Workpad 0.1.1 is **submitted to the Chrome Web Sto
 | A2 | In Supabase Auth: enable **Google** with the Web client ID and secret, disable email sign-in, and set the Site URL to `https://madhusudhankonda.github.io/workpad/`. | You | Done |
 | A3 | Register a Chrome Web Store developer account and create the item, which assigns the permanent extension ID. | You | Done: `fjkidcpbclhdbnignknhkbmlmpcpgaad` |
 | A4 | In Google Cloud for the existing OAuth client: add `https://fjkidcpbclhdbnignknhkbmlmpcpgaad.chromiumapp.org/` as a redirect URI (keep the dev one) and move the consent screen to **In production** with the privacy and terms URLs. | You | Done |
-| A5 | Production OpenAI key as Supabase secret `OPENAI_API_KEY`, with a monthly budget and usage alerts on its OpenAI project. | You | Key set; **confirm budget and alert** |
+| A5 | Production OpenAI key as Supabase secret `OPENAI_API_KEY`, with a monthly budget and usage alerts on its OpenAI project. | You | Done: $50 monthly hard limit, alerts at 50%, 80% and 100% |
 | A6 | Apply all migrations to production and verify row security, grants and client access. | Claude | Done |
 | A7 | Deploy the six Edge Functions and check that unauthenticated requests are refused. | Claude | Done; `stripe-webhook` redeployed with the `cancel_at` fix (#32) |
 | A8 | Add GitHub repository secrets `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` with production values. | You | Done |
@@ -48,8 +48,9 @@ Stripe test mode was skipped: the live account was configured directly and teste
 | C1 | Bump the version in `package.json` and both manifests, merge, and push a `v<version>` tag. The release workflow builds the production ZIP without the manifest key. | Claude | Done: [v0.1.1](https://github.com/madhusudhankonda/workpad/releases/tag/v0.1.1) |
 | C2 | Upload the ZIP, complete the listing from [CHROME_WEB_STORE.md](CHROME_WEB_STORE.md) with the assets in `store-assets/`, add the permission justifications and single purpose, set visibility to **Unlisted** and submit. | You | Done: submitted 24 Oct |
 | C3 | Privacy practices disclosures: **website content**, **personal communications**, **personally identifiable information** and **authentication information**; not sold, not used for unrelated purposes or creditworthiness; remote code: none. | You | Done |
-| C4 | After approval: export a backup from the unpacked install, remove it, install from the store, sign in, import the backup, then run AI, research, a brief, backup export/import, checkout and the billing portal end to end. If publishing was deferred, click Publish within 30 days of approval. | You | Waiting for review |
-| C5 | Invite the first 10–20 testers with the unlisted link. | You | After C4 and A5 |
+| C4 | After approval: export a backup from the unpacked install, remove it, install from the store, sign in, import the backup, then run AI, research, a brief, backup export/import, checkout and the billing portal end to end. If publishing was deferred, click Publish within 30 days of approval. | You | Done: store install verified 26 Oct |
+| C5 | Invite the first 10–20 testers with the unlisted link. | You | Started 26 Oct |
+| C6 | Set Payments to **Contains in-app purchases**, set visibility to **Public** and submit for review. | You | Submitted 27 Oct; waiting for review |
 
 ## Known gaps to accept or fix before inviting testers
 
