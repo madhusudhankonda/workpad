@@ -19,8 +19,8 @@
     "package:release": "VITE_ALLOW_FREE_SYNC=false npm run validate:production && VITE_ALLOW_FREE_SYNC=false npm run build && npm run validate:release && sh scripts/package-release.sh"
   },
   "dependencies": {
-    "dexie": "4.4.6",
-    "lucide-react": "1.59.0",
+    "dexie": "4.4.7",
+    "lucide-react": "1.61.0",
     "react": "19.3.1",
     "react-dom": "19.3.1"
   },
